@@ -220,12 +220,13 @@ function Index() {
       <header className="max-w-6xl mx-auto px-6 pt-10 pb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-obf-accent flex items-center justify-center shadow-obf-glow">
-              <span className="text-obf-bg font-bold text-lg">⌬</span>
+            <div className="relative w-11 h-11 rounded-2xl bg-obf-accent flex items-center justify-center shadow-obf-glow">
+              <span className="text-obf-bg font-black text-lg">⌬</span>
+              <span className="absolute -inset-0.5 rounded-2xl bg-obf-accent/30 blur-md -z-10" />
             </div>
             <div>
-              <p className="text-xs tracking-[0.3em] text-obf-muted uppercase">MK · Obfuscator</p>
-              <p className="text-sm font-semibold">Ultimate Protection v3</p>
+              <p className="text-[10px] tracking-[0.4em] text-obf-muted uppercase">MK · Obfuscator</p>
+              <p className="text-sm font-bold tracking-wide">HTML NOOB <span className="text-obf-accent">PRO</span></p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-obf-border bg-obf-card/60 backdrop-blur">
