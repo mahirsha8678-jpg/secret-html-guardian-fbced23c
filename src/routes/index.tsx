@@ -6,7 +6,11 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Ultimate HTML Obfuscator — Unbreakable Protection" },
-      { name: "description", content: "Premium HTML/JS obfuscator with Chinese encryption, runtime isolation, domain lock & anti-inspect protection." },
+      {
+        name: "description",
+        content:
+          "Premium HTML/JS obfuscator with Chinese encryption, runtime isolation, domain lock & anti-inspect protection.",
+      },
     ],
   }),
 });
@@ -23,8 +27,8 @@ function randomString(length = 10) {
 function utf8Encode(text: string) {
   return btoa(
     encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
-      String.fromCharCode(parseInt(p1, 16))
-    )
+      String.fromCharCode(parseInt(p1, 16)),
+    ),
   );
 }
 
@@ -33,10 +37,21 @@ function utf8Decode_src() {
   return `function utf8Decode(b){return decodeURIComponent(Array.prototype.map.call(atob(b),function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)}).join(''))}`;
 }
 
+function checksum(text: string) {
+  let hash = 2166136261;
+  for (let i = 0; i < text.length; i++) {
+    hash ^= text.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36).toUpperCase();
+}
+
 function generate(rawHTML: string, domainLock: string) {
   const OWNER = "@MK_BRO_1";
   const SIGNATURE = "MKIRAJ9619_HTMLOBF_PROTECTED";
   const timestamp = new Date().toLocaleString();
+  const CREDIT_TEXT = `PROTECTED_BY_${OWNER}_${SIGNATURE}`;
+  const CREDIT_HASH = checksum(CREDIT_TEXT);
 
   const headerComment = `<!--\n  ====================================================\n   PROTECTED BY ULTIMATE HTML OBFUSCATOR\n   Owner: ${OWNER}\n   Signature: ${SIGNATURE}\n   Generated: ${timestamp}\n  ====================================================\n-->\n`;
 
@@ -71,11 +86,18 @@ function generate(rawHTML: string, domainLock: string) {
 ${utf8Decode_src()}
 ${domainCheck}
 (function(){
-  var OWNER=${JSON.stringify(OWNER)};
-  var SIG=${JSON.stringify(SIGNATURE)};
-  var page=document.documentElement.outerHTML;
-  if(page.indexOf(OWNER)===-1 || page.indexOf(SIG)===-1){
-    document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px"><div><h1 style="font-size:48px;margin:0 0 12px">⚠ CODE BLOCKED</h1><p style="opacity:.7">Protected header removed</p></div></div>';
+  function __mkHash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36).toUpperCase();}
+  function __violation(msg){document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#08080b;color:#ff4d4d;text-align:center;padding:24px"><div style="max-width:620px"><div style="font-size:54px;margin-bottom:14px">🚫</div><h1 style="font-size:42px;line-height:1.05;margin:0 0 12px;letter-spacing:-.03em">VIOLATION DETECTED</h1><p style="font-size:18px;margin:0;color:#ffd1d1">Credit removed or protected file modified.</p><p style="font-size:13px;margin-top:16px;color:#8f8f98">'+msg+'</p></div></div>';throw new Error(msg);}
+  var credit=document.querySelector('meta[name="mk-protected-credit"]');
+  if(!credit || credit.getAttribute('content')!==${JSON.stringify(CREDIT_TEXT)} || credit.getAttribute('data-sign')!==${JSON.stringify(CREDIT_HASH)} || __mkHash(credit.getAttribute('content')||'')!==credit.getAttribute('data-sign')){
+    __violation('CREDIT_REMOVED_OR_TAMPERED');
+  }
+  var badge=document.getElementById('mk-protected-credit');
+  if(!badge || badge.textContent!==${JSON.stringify(CREDIT_TEXT)} || badge.getAttribute('data-sign')!==${JSON.stringify(CREDIT_HASH)}){
+    __violation('CREDIT_BADGE_REMOVED_OR_TAMPERED');
+  }
+  if(document.documentElement.outerHTML.indexOf(${JSON.stringify(SIGNATURE)})===-1){
+    document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px"><div><h1 style="font-size:48px;margin:0 0 12px">⚠ CODE BLOCKED</h1><p style="opacity:.7">Protected signature removed</p></div></div>';
     throw new Error('CREDIT REMOVED');
   }
   var ${v.raw}=${chineseLiteral};
@@ -105,13 +127,15 @@ ${domainCheck}
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
+<meta name="mk-protected-credit" content="${CREDIT_TEXT}" data-sign="${CREDIT_HASH}">
 <title>Protected</title>
 <style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#fff;}iframe{width:100%;height:100%;border:none;display:block;}</style>
 </head>
 <body>
+<div id="mk-protected-credit" data-sign="${CREDIT_HASH}" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;user-select:none">${CREDIT_TEXT}</div>
 <script>
 ${runtime}
-<\/script>
+</script>
 </body>
 </html>`;
 
@@ -194,14 +218,18 @@ function Index() {
         {/* Hero */}
         <section className="text-center mt-6 mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-obf-border bg-obf-card/60 backdrop-blur mb-6">
-            <span className="text-xs text-obf-muted">🔐 Triple-layer Base64 · Chinese cipher · Iframe sandbox</span>
+            <span className="text-xs text-obf-muted">
+              🔐 Triple-layer Base64 · Chinese cipher · Iframe sandbox
+            </span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-[1.05] bg-clip-text text-transparent bg-obf-headline">
-            Ultimate HTML<br />Obfuscator
+            Ultimate HTML
+            <br />
+            Obfuscator
           </h1>
           <p className="mt-5 text-obf-muted max-w-xl mx-auto text-sm sm:text-base">
-            আপনার HTML / JS কোডকে অরক্ষনীয় বানান — Chinese encryption,
-            runtime isolation এবং protected loader একসাথে।
+            আপনার HTML / JS কোডকে অরক্ষনীয় বানান — Chinese encryption, runtime isolation এবং
+            protected loader একসাথে।
           </p>
         </section>
 
@@ -210,7 +238,8 @@ function Index() {
           <div className="grid gap-6">
             <div>
               <label className="flex items-center gap-2 text-xs uppercase tracking-widest text-obf-muted mb-2">
-                <span>🌐</span> Domain Lock <span className="text-obf-muted/60 normal-case tracking-normal">(optional)</span>
+                <span>🌐</span> Domain Lock{" "}
+                <span className="text-obf-muted/60 normal-case tracking-normal">(optional)</span>
               </label>
               <input
                 type="text"
@@ -285,7 +314,11 @@ function Index() {
           {[
             { i: "🧬", t: "Chinese Cipher", d: "XOR + CJK range mapping for opaque payloads." },
             { i: "🛡️", t: "Runtime Sandbox", d: "Iframe-isolated execution via blob URLs." },
-            { i: "🔒", t: "Domain Lock", d: "Bind output to a single host. Anywhere else: blocked." },
+            {
+              i: "🔒",
+              t: "Domain Lock",
+              d: "Bind output to a single host. Anywhere else: blocked.",
+            },
           ].map((f) => (
             <div
               key={f.t}
@@ -299,7 +332,8 @@ function Index() {
         </section>
 
         <footer className="mt-16 text-center text-xs text-obf-muted">
-          Designed by <span className="text-obf-accent font-semibold">@MK_BRO_1</span> · Advanced Runtime Protection
+          Designed by <span className="text-obf-accent font-semibold">@MK_BRO_1</span> · Advanced
+          Runtime Protection
         </footer>
       </main>
     </div>
