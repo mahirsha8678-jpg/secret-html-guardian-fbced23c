@@ -53,7 +53,12 @@ function generate(rawHTML: string, domainLock: string) {
   const CREDIT_TEXT = `PROTECTED_BY_${OWNER}_${SIGNATURE}`;
   const CREDIT_HASH = checksum(CREDIT_TEXT);
 
-  const headerComment = `<!--\n  ====================================================\n   PROTECTED BY ULTIMATE HTML OBFUSCATOR\n   Owner: ${OWNER}\n   Signature: ${SIGNATURE}\n   Generated: ${timestamp}\n  ====================================================\n-->\n`;
+  const headerCommentBody = `\n  ====================================================\n   PROTECTED BY ULTIMATE HTML OBFUSCATOR\n   Owner: ${OWNER}\n   Signature: ${SIGNATURE}\n   Generated: ${timestamp}\n  ====================================================\n`;
+  const HEADER_HASH = checksum(headerCommentBody);
+  // Place comment INSIDE <head> so it lives in the DOM as a Comment node and we can verify it.
+  const headerCommentInHead = `<!--${headerCommentBody}-->\n<!--MK-HEADER-SIGN:${HEADER_HASH}-->`;
+  // Visible top banner (decorative duplicate); we verify the in-DOM one.
+  const headerComment = `<!--${headerCommentBody}-->\n`;
 
   // Triple base64 layered encoding of the raw payload
   const l1 = utf8Encode(rawHTML);
@@ -96,6 +101,21 @@ ${domainCheck}
   if(!badge || badge.textContent!==${JSON.stringify(CREDIT_TEXT)} || badge.getAttribute('data-sign')!==${JSON.stringify(CREDIT_HASH)}){
     __violation('CREDIT_BADGE_REMOVED_OR_TAMPERED');
   }
+  // Verify the header comment block (any character change/removal triggers violation)
+  var __expectedHeader=${JSON.stringify(headerCommentBody)};
+  var __expectedHeaderHash=${JSON.stringify(HEADER_HASH)};
+  var __nodes=document.head?document.head.childNodes:[];
+  var __foundHeader=false, __foundSign=false;
+  for(var __i=0;__i<__nodes.length;__i++){
+    var __n=__nodes[__i];
+    if(__n.nodeType===8){
+      if(__n.nodeValue===__expectedHeader) __foundHeader=true;
+      if(__n.nodeValue==='MK-HEADER-SIGN:'+__expectedHeaderHash) __foundSign=true;
+    }
+  }
+  if(!__foundHeader || !__foundSign || __mkHash(__expectedHeader)!==__expectedHeaderHash){
+    __violation('HEADER_CREDIT_COMMENT_REMOVED_OR_TAMPERED');
+  }
   if(document.documentElement.outerHTML.indexOf(${JSON.stringify(SIGNATURE)})===-1){
     document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px"><div><h1 style="font-size:48px;margin:0 0 12px">⚠ CODE BLOCKED</h1><p style="opacity:.7">Protected signature removed</p></div></div>';
     throw new Error('CREDIT REMOVED');
@@ -128,6 +148,7 @@ ${domainCheck}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="mk-protected-credit" content="${CREDIT_TEXT}" data-sign="${CREDIT_HASH}">
+${headerCommentInHead}
 <title>Protected</title>
 <style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#fff;}iframe{width:100%;height:100%;border:none;display:block;}</style>
 </head>
