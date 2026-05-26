@@ -101,6 +101,21 @@ ${domainCheck}
   if(!badge || badge.textContent!==${JSON.stringify(CREDIT_TEXT)} || badge.getAttribute('data-sign')!==${JSON.stringify(CREDIT_HASH)}){
     __violation('CREDIT_BADGE_REMOVED_OR_TAMPERED');
   }
+  // Verify the header comment block (any character change/removal triggers violation)
+  var __expectedHeader=${JSON.stringify(headerCommentBody)};
+  var __expectedHeaderHash=${JSON.stringify(HEADER_HASH)};
+  var __nodes=document.head?document.head.childNodes:[];
+  var __foundHeader=false, __foundSign=false;
+  for(var __i=0;__i<__nodes.length;__i++){
+    var __n=__nodes[__i];
+    if(__n.nodeType===8){
+      if(__n.nodeValue===__expectedHeader) __foundHeader=true;
+      if(__n.nodeValue==='MK-HEADER-SIGN:'+__expectedHeaderHash) __foundSign=true;
+    }
+  }
+  if(!__foundHeader || !__foundSign || __mkHash(__expectedHeader)!==__expectedHeaderHash){
+    __violation('HEADER_CREDIT_COMMENT_REMOVED_OR_TAMPERED');
+  }
   if(document.documentElement.outerHTML.indexOf(${JSON.stringify(SIGNATURE)})===-1){
     document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px"><div><h1 style="font-size:48px;margin:0 0 12px">⚠ CODE BLOCKED</h1><p style="opacity:.7">Protected signature removed</p></div></div>';
     throw new Error('CREDIT REMOVED');
