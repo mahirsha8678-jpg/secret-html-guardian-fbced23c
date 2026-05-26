@@ -238,20 +238,31 @@ function Index() {
 
       <main className="max-w-6xl mx-auto px-6 pb-20">
         {/* Hero */}
-        <section className="text-center mt-6 mb-12">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-obf-border bg-obf-card/60 backdrop-blur mb-6">
-            <span className="text-xs text-obf-muted">
-              🔐 Triple-layer Base64 · Chinese cipher · Iframe sandbox
+        <section className="text-center mt-6 mb-14 relative">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-obf-accent/30 bg-obf-accent/5 backdrop-blur mb-7">
+            <span className="w-1.5 h-1.5 rounded-full bg-obf-accent animate-pulse" />
+            <span className="text-[11px] tracking-widest uppercase text-obf-accent font-semibold">
+              v4 · Unbreakable Edition
             </span>
           </div>
-          <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-[1.05] bg-clip-text text-transparent bg-obf-headline">
-            Ultimate HTML
+          <h1 className="text-5xl sm:text-7xl font-black tracking-tighter leading-[0.95] bg-clip-text text-transparent bg-obf-headline">
+            HTML NOOB
             <br />
-            Obfuscator
+            <span className="italic font-light">PRO</span>
           </h1>
-          <p className="mt-5 text-obf-muted max-w-xl mx-auto text-sm sm:text-base">
-            আপনার HTML / JS কোডকে অরক্ষনীয় বানান — Chinese encryption, runtime isolation এবং
-            protected loader একসাথে।
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+            {["Chinese Cipher", "Triple Base64", "Iframe Sandbox", "Domain Lock"].map((t) => (
+              <span
+                key={t}
+                className="px-3 py-1 rounded-full text-[10px] uppercase tracking-widest text-obf-muted border border-obf-border bg-obf-card/40 backdrop-blur"
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+          <p className="mt-6 text-obf-muted max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
+            আপনার HTML / JS কোডকে বানান <span className="text-obf-fg font-semibold">অরক্ষনীয়</span> —
+            military-grade encryption, runtime isolation এবং tamper-proof credit lock একসাথে।
           </p>
         </section>
 
