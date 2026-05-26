@@ -218,14 +218,18 @@ function Index() {
         {/* Hero */}
         <section className="text-center mt-6 mb-12">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-obf-border bg-obf-card/60 backdrop-blur mb-6">
-            <span className="text-xs text-obf-muted">🔐 Triple-layer Base64 · Chinese cipher · Iframe sandbox</span>
+            <span className="text-xs text-obf-muted">
+              🔐 Triple-layer Base64 · Chinese cipher · Iframe sandbox
+            </span>
           </div>
           <h1 className="text-4xl sm:text-6xl font-bold tracking-tight leading-[1.05] bg-clip-text text-transparent bg-obf-headline">
-            Ultimate HTML<br />Obfuscator
+            Ultimate HTML
+            <br />
+            Obfuscator
           </h1>
           <p className="mt-5 text-obf-muted max-w-xl mx-auto text-sm sm:text-base">
-            আপনার HTML / JS কোডকে অরক্ষনীয় বানান — Chinese encryption,
-            runtime isolation এবং protected loader একসাথে।
+            আপনার HTML / JS কোডকে অরক্ষনীয় বানান — Chinese encryption, runtime isolation এবং
+            protected loader একসাথে।
           </p>
         </section>
 
@@ -234,7 +238,8 @@ function Index() {
           <div className="grid gap-6">
             <div>
               <label className="flex items-center gap-2 text-xs uppercase tracking-widest text-obf-muted mb-2">
-                <span>🌐</span> Domain Lock <span className="text-obf-muted/60 normal-case tracking-normal">(optional)</span>
+                <span>🌐</span> Domain Lock{" "}
+                <span className="text-obf-muted/60 normal-case tracking-normal">(optional)</span>
               </label>
               <input
                 type="text"
@@ -309,7 +314,11 @@ function Index() {
           {[
             { i: "🧬", t: "Chinese Cipher", d: "XOR + CJK range mapping for opaque payloads." },
             { i: "🛡️", t: "Runtime Sandbox", d: "Iframe-isolated execution via blob URLs." },
-            { i: "🔒", t: "Domain Lock", d: "Bind output to a single host. Anywhere else: blocked." },
+            {
+              i: "🔒",
+              t: "Domain Lock",
+              d: "Bind output to a single host. Anywhere else: blocked.",
+            },
           ].map((f) => (
             <div
               key={f.t}
@@ -323,7 +332,8 @@ function Index() {
         </section>
 
         <footer className="mt-16 text-center text-xs text-obf-muted">
-          Designed by <span className="text-obf-accent font-semibold">@MK_BRO_1</span> · Advanced Runtime Protection
+          Designed by <span className="text-obf-accent font-semibold">@MK_BRO_1</span> · Advanced
+          Runtime Protection
         </footer>
       </main>
     </div>
