@@ -364,9 +364,14 @@ function Index() {
           ))}
         </section>
 
-        <footer className="mt-16 text-center text-xs text-obf-muted">
-          Designed by <span className="text-obf-accent font-semibold">@MK_BRO_1</span> · Advanced
-          Runtime Protection
+        <footer className="mt-20 pt-8 border-t border-obf-border/50 text-center">
+          <p className="text-xs text-obf-muted">
+            Crafted with <span className="text-obf-accent">◆</span> by{" "}
+            <span className="text-obf-fg font-bold">@MK_BRO_1</span>
+          </p>
+          <p className="text-[10px] tracking-[0.3em] uppercase text-obf-muted/60 mt-2">
+            HTML NOOB PRO — Tamper-Proof Runtime
+          </p>
         </footer>
       </main>
     </div>
