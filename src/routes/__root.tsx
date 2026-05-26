@@ -72,14 +72,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Html Noob Book" },
+      { name: "description", content: "Secure HTML Shield obfuscates HTML code, protecting it from unauthorized access and modification." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Html Noob Book" },
+      { property: "og:description", content: "Secure HTML Shield obfuscates HTML code, protecting it from unauthorized access and modification." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Html Noob Book" },
+      { name: "twitter:description", content: "Secure HTML Shield obfuscates HTML code, protecting it from unauthorized access and modification." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a6346542-0d10-4e43-aaa6-d4b256d95c78/id-preview-4de4dc74--c8800019-ea3d-46b4-9eff-6868e8036da1.lovable.app-1779836733861.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/a6346542-0d10-4e43-aaa6-d4b256d95c78/id-preview-4de4dc74--c8800019-ea3d-46b4-9eff-6868e8036da1.lovable.app-1779836733861.png" },
     ],
     links: [
       {
