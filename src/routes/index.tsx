@@ -53,7 +53,12 @@ function generate(rawHTML: string, domainLock: string) {
   const CREDIT_TEXT = `PROTECTED_BY_${OWNER}_${SIGNATURE}`;
   const CREDIT_HASH = checksum(CREDIT_TEXT);
 
-  const headerComment = `<!--\n  ====================================================\n   PROTECTED BY ULTIMATE HTML OBFUSCATOR\n   Owner: ${OWNER}\n   Signature: ${SIGNATURE}\n   Generated: ${timestamp}\n  ====================================================\n-->\n`;
+  const headerCommentBody = `\n  ====================================================\n   PROTECTED BY ULTIMATE HTML OBFUSCATOR\n   Owner: ${OWNER}\n   Signature: ${SIGNATURE}\n   Generated: ${timestamp}\n  ====================================================\n`;
+  const HEADER_HASH = checksum(headerCommentBody);
+  // Place comment INSIDE <head> so it lives in the DOM as a Comment node and we can verify it.
+  const headerCommentInHead = `<!--${headerCommentBody}-->\n<!--MK-HEADER-SIGN:${HEADER_HASH}-->`;
+  // Visible top banner (decorative duplicate); we verify the in-DOM one.
+  const headerComment = `<!--${headerCommentBody}-->\n`;
 
   // Triple base64 layered encoding of the raw payload
   const l1 = utf8Encode(rawHTML);
