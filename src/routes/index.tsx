@@ -6,7 +6,11 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Ultimate HTML Obfuscator — Unbreakable Protection" },
-      { name: "description", content: "Premium HTML/JS obfuscator with Chinese encryption, runtime isolation, domain lock & anti-inspect protection." },
+      {
+        name: "description",
+        content:
+          "Premium HTML/JS obfuscator with Chinese encryption, runtime isolation, domain lock & anti-inspect protection.",
+      },
     ],
   }),
 });
@@ -23,8 +27,8 @@ function randomString(length = 10) {
 function utf8Encode(text: string) {
   return btoa(
     encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
-      String.fromCharCode(parseInt(p1, 16))
-    )
+      String.fromCharCode(parseInt(p1, 16)),
+    ),
   );
 }
 
@@ -131,7 +135,7 @@ ${domainCheck}
 <div id="mk-protected-credit" data-sign="${CREDIT_HASH}" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;user-select:none">${CREDIT_TEXT}</div>
 <script>
 ${runtime}
-<\/script>
+</script>
 </body>
 </html>`;
 
