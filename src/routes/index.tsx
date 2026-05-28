@@ -60,18 +60,24 @@ function generate(rawHTML: string, domainLock: string) {
   // Visible top banner (decorative duplicate); we verify the in-DOM one.
   const headerComment = `<!--${headerCommentBody}-->\n`;
 
+  // ===== Per-build random keys (different every generation) =====
+  const KEY1 = Math.floor(Math.random() * 200) + 30; // 30..229
+  const KEY2 = Math.floor(Math.random() * 200) + 30;
+  const KEY3 = Math.floor(Math.random() * 200) + 30;
+  const ROT = Math.floor(Math.random() * 0x3000) + 0x4e00; // CJK base offset varies
+
   // Triple base64 layered encoding of the raw payload
   const l1 = utf8Encode(rawHTML);
   const l2 = utf8Encode(l1);
   const l3 = utf8Encode(l2);
 
-  // Chinese cipher: XOR 0x91, shift to CJK range
+  // Rolling-key Chinese cipher: XOR with (KEY1 ^ KEY2 ^ (i&0xff)) then shift to CJK range with random base
   let chinese = "";
   for (let i = 0; i < l3.length; i++) {
-    chinese += String.fromCharCode((l3.charCodeAt(i) ^ 0x91) + 0x4e00);
+    const rk = (KEY1 ^ KEY2 ^ (KEY3 + i) & 0xff) & 0xff;
+    chinese += String.fromCharCode((l3.charCodeAt(i) ^ rk) + ROT);
   }
 
-  // Escape for JS string literal
   const chineseLiteral = JSON.stringify(chinese);
 
   const v = {
@@ -81,49 +87,28 @@ function generate(rawHTML: string, domainLock: string) {
     blob: "_" + randomString(8),
     url: "_" + randomString(8),
     raw: "_" + randomString(8),
+    k1: "_" + randomString(6),
+    k2: "_" + randomString(6),
+    k3: "_" + randomString(6),
+    rot: "_" + randomString(6),
+    fn: "_" + randomString(8),
+    boot: "_" + randomString(8),
   };
 
   const domainCheck = domainLock
     ? `(function(){var allowed=${JSON.stringify(domainLock.toLowerCase())};var host=(location.hostname||'').toLowerCase();if(host!==allowed){document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px"><div><h1 style="font-size:48px;margin:0 0 12px">🔒 DOMAIN LOCK</h1><p style="opacity:.7">Unauthorized domain detected</p></div></div>';throw new Error('DOMAIN BLOCKED');}})();`
     : "";
 
-  const runtime = `
+  // ===== Inner program: the actual decode+execute (will be wrapped & encrypted) =====
+  const innerProgram = `
 ${utf8Decode_src()}
-${domainCheck}
 (function(){
-  function __mkHash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36).toUpperCase();}
-  function __violation(msg){document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#08080b;color:#ff4d4d;text-align:center;padding:24px"><div style="max-width:620px"><div style="font-size:54px;margin-bottom:14px">🚫</div><h1 style="font-size:42px;line-height:1.05;margin:0 0 12px;letter-spacing:-.03em">VIOLATION DETECTED</h1><p style="font-size:18px;margin:0;color:#ffd1d1">Credit removed or protected file modified.</p><p style="font-size:13px;margin-top:16px;color:#8f8f98">'+msg+'</p></div></div>';throw new Error(msg);}
-  var credit=document.querySelector('meta[name="mk-protected-credit"]');
-  if(!credit || credit.getAttribute('content')!==${JSON.stringify(CREDIT_TEXT)} || credit.getAttribute('data-sign')!==${JSON.stringify(CREDIT_HASH)} || __mkHash(credit.getAttribute('content')||'')!==credit.getAttribute('data-sign')){
-    __violation('CREDIT_REMOVED_OR_TAMPERED');
-  }
-  var badge=document.getElementById('mk-protected-credit');
-  if(!badge || badge.textContent!==${JSON.stringify(CREDIT_TEXT)} || badge.getAttribute('data-sign')!==${JSON.stringify(CREDIT_HASH)}){
-    __violation('CREDIT_BADGE_REMOVED_OR_TAMPERED');
-  }
-  // Verify the header comment block (any character change/removal triggers violation)
-  var __expectedHeader=${JSON.stringify(headerCommentBody)};
-  var __expectedHeaderHash=${JSON.stringify(HEADER_HASH)};
-  var __nodes=document.head?document.head.childNodes:[];
-  var __foundHeader=false, __foundSign=false;
-  for(var __i=0;__i<__nodes.length;__i++){
-    var __n=__nodes[__i];
-    if(__n.nodeType===8){
-      if(__n.nodeValue===__expectedHeader) __foundHeader=true;
-      if(__n.nodeValue==='MK-HEADER-SIGN:'+__expectedHeaderHash) __foundSign=true;
-    }
-  }
-  if(!__foundHeader || !__foundSign || __mkHash(__expectedHeader)!==__expectedHeaderHash){
-    __violation('HEADER_CREDIT_COMMENT_REMOVED_OR_TAMPERED');
-  }
-  if(document.documentElement.outerHTML.indexOf(${JSON.stringify(SIGNATURE)})===-1){
-    document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px"><div><h1 style="font-size:48px;margin:0 0 12px">⚠ CODE BLOCKED</h1><p style="opacity:.7">Protected signature removed</p></div></div>';
-    throw new Error('CREDIT REMOVED');
-  }
+  var ${v.k1}=${KEY1},${v.k2}=${KEY2},${v.k3}=${KEY3},${v.rot}=${ROT};
   var ${v.raw}=${chineseLiteral};
   var ${v.payload}='';
   for(var i=0;i<${v.raw}.length;i++){
-    ${v.payload}+=String.fromCharCode((${v.raw}.charCodeAt(i)-0x4E00)^0x91);
+    var rk=(${v.k1}^${v.k2}^(${v.k3}+i)&0xff)&0xff;
+    ${v.payload}+=String.fromCharCode((${v.raw}.charCodeAt(i)-${v.rot})^rk);
   }
   var ${v.decode}=utf8Decode(utf8Decode(utf8Decode(${v.payload})));
   var ${v.blob}=new Blob([${v.decode}],{type:'text/html'});
@@ -132,7 +117,83 @@ ${domainCheck}
   ${v.iframe}.src=${v.url};
   ${v.iframe}.setAttribute('sandbox','allow-scripts allow-forms allow-same-origin allow-popups allow-modals');
   document.body.appendChild(${v.iframe});
-  // Anti-inspect
+})();`.trim();
+
+  // ===== Encrypt the inner program with another rolling XOR + CJK shift =====
+  const PK1 = Math.floor(Math.random() * 200) + 30;
+  const PK2 = Math.floor(Math.random() * 200) + 30;
+  const PROT = Math.floor(Math.random() * 0x2000) + 0x5000;
+  let innerEnc = "";
+  for (let i = 0; i < innerProgram.length; i++) {
+    const rk = (PK1 ^ (PK2 + i) & 0xff) & 0xff;
+    innerEnc += String.fromCharCode((innerProgram.charCodeAt(i) ^ rk) + PROT);
+  }
+  const innerLit = JSON.stringify(innerEnc);
+
+  // ===== Outer bootstrap runtime: integrity + anti-debug + decrypt-and-run =====
+  const runtime = `
+${domainCheck}
+(function(){
+  function __mkHash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36).toUpperCase();}
+  function __violation(msg){try{document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#08080b;color:#ff4d4d;text-align:center;padding:24px"><div style="max-width:620px"><div style="font-size:54px;margin-bottom:14px">🚫</div><h1 style="font-size:42px;line-height:1.05;margin:0 0 12px;letter-spacing:-.03em">VIOLATION DETECTED</h1><p style="font-size:18px;margin:0;color:#ffd1d1">Protected file modified or debugger detected.</p><p style="font-size:13px;margin-top:16px;color:#8f8f98">'+msg+'</p></div></div>';}catch(e){}try{window.stop&&window.stop();}catch(e){}throw new Error(msg);}
+
+  // ---- Credit + header integrity ----
+  var credit=document.querySelector('meta[name="mk-protected-credit"]');
+  if(!credit || credit.getAttribute('content')!==${JSON.stringify(CREDIT_TEXT)} || credit.getAttribute('data-sign')!==${JSON.stringify(CREDIT_HASH)} || __mkHash(credit.getAttribute('content')||'')!==credit.getAttribute('data-sign')) __violation('CREDIT_REMOVED_OR_TAMPERED');
+  var badge=document.getElementById('mk-protected-credit');
+  if(!badge || badge.textContent!==${JSON.stringify(CREDIT_TEXT)} || badge.getAttribute('data-sign')!==${JSON.stringify(CREDIT_HASH)}) __violation('CREDIT_BADGE_REMOVED_OR_TAMPERED');
+  var __expectedHeader=${JSON.stringify(headerCommentBody)};
+  var __expectedHeaderHash=${JSON.stringify(HEADER_HASH)};
+  var __nodes=document.head?document.head.childNodes:[];
+  var __fH=false,__fS=false;
+  for(var __i=0;__i<__nodes.length;__i++){var __n=__nodes[__i];if(__n.nodeType===8){if(__n.nodeValue===__expectedHeader)__fH=true;if(__n.nodeValue==='MK-HEADER-SIGN:'+__expectedHeaderHash)__fS=true;}}
+  if(!__fH||!__fS||__mkHash(__expectedHeader)!==__expectedHeaderHash) __violation('HEADER_CREDIT_COMMENT_REMOVED_OR_TAMPERED');
+  if(document.documentElement.outerHTML.indexOf(${JSON.stringify(SIGNATURE)})===-1) __violation('SIGNATURE_REMOVED');
+
+  // ---- Anti-debug: timing trap (debugger pauses inflate dt) ----
+  (function __ad(){
+    var loop=function(){
+      var t=Date.now();
+      debugger;
+      if(Date.now()-t>120){__violation('DEBUGGER_DETECTED');}
+      setTimeout(loop,1500+Math.random()*500);
+    };
+    try{loop();}catch(e){}
+  })();
+
+  // ---- DevTools detection by viewport delta ----
+  (function __dt(){
+    setInterval(function(){
+      var w=window.outerWidth-window.innerWidth;
+      var h=window.outerHeight-window.innerHeight;
+      if(w>200||h>200){__violation('DEVTOOLS_OPEN');}
+    },1200);
+  })();
+
+  // ---- Console neutralization ----
+  try{var __c=['log','warn','info','debug','trace','table','dir'];for(var __ci=0;__ci<__c.length;__ci++){try{window.console[__c[__ci]]=function(){};}catch(e){}}}catch(e){}
+
+  // ---- Self-integrity: ensure native fns weren't patched ----
+  try{
+    if(String(Function.prototype.toString).indexOf('[native code]')===-1) __violation('NATIVE_PATCHED_TOSTRING');
+    if(String(Array.prototype.map).indexOf('[native code]')===-1) __violation('NATIVE_PATCHED_MAP');
+    if(String(atob).indexOf('[native code]')===-1) __violation('NATIVE_PATCHED_ATOB');
+  }catch(e){__violation('NATIVE_CHECK_FAILED');}
+
+  // ---- Decrypt & execute inner program via Function (VM-like) ----
+  try{
+    var __PK1=${PK1},__PK2=${PK2},__PROT=${PROT};
+    var __enc=${innerLit};
+    var __src='';
+    for(var __k=0;__k<__enc.length;__k++){
+      var __rk=(__PK1^(__PK2+__k)&0xff)&0xff;
+      __src+=String.fromCharCode((__enc.charCodeAt(__k)-__PROT)^__rk);
+    }
+    var ${v.fn}=Function(__src);
+    ${v.fn}();
+  }catch(__e){__violation('PAYLOAD_TAMPERED');}
+
+  // ---- Anti-inspect shortcuts ----
   document.addEventListener('contextmenu',function(e){e.preventDefault();});
   document.addEventListener('keydown',function(e){
     if(e.keyCode===123) e.preventDefault();
@@ -141,6 +202,7 @@ ${domainCheck}
   });
 })();
 `.trim();
+
 
   const out = `${headerComment}<!DOCTYPE html>
 <html lang="en">
