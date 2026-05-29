@@ -37,42 +37,36 @@ function checksum(text: string) {
   return (hash >>> 0).toString(36).toUpperCase();
 }
 
-function generate(rawHTML: string, domainLock: string, serverOrigin: string) {
+function generate(rawHTML: string, domainLock: string, _serverOrigin: string) {
   const OWNER = "@MK_BRO_1";
   const SIGNATURE = "MKIRAJ9619_HTMLOBF_PROTECTED";
   const timestamp = new Date().toLocaleString();
   const CREDIT_TEXT = `PROTECTED_BY_${OWNER}_${SIGNATURE}`;
   const CREDIT_HASH = checksum(CREDIT_TEXT);
 
-  const headerCommentBody = `\n  ====================================================\n   PROTECTED BY ULTIMATE HTML OBFUSCATOR\n   Owner: ${OWNER}\n   Signature: ${SIGNATURE}\n   Server:  ${serverOrigin}\n   Generated: ${timestamp}\n  ====================================================\n`;
+  const headerCommentBody = `\n  ====================================================\n   PROTECTED BY ULTIMATE HTML OBFUSCATOR\n   Owner: ${OWNER}\n   Signature: ${SIGNATURE}\n   Generated: ${timestamp}\n  ====================================================\n`;
   const headerComment = `<!--${headerCommentBody}-->\n`;
 
-  // Per-build random keys (different every generation)
   const K1 = Math.floor(Math.random() * 200) + 30;
   const K2 = Math.floor(Math.random() * 200) + 30;
-  const ROT = Math.floor(Math.random() * 0x3000) + 0x4e00;
 
-  // Triple base64 utf8-safe encoding
   const l1 = utf8Encode(rawHTML);
   const l2 = utf8Encode(l1);
   const l3 = utf8Encode(l2);
 
-  // Rolling-XOR -> binary string -> URL-safe base64 (so it travels in URL params)
   let bin = "";
   for (let i = 0; i < l3.length; i++) {
     const rk = (K1 ^ ((K2 + i) & 0xff)) & 0xff;
     bin += String.fromCharCode(l3.charCodeAt(i) ^ rk);
   }
-  const payloadB64 = toUrlSafeB64(bin);
+  const payloadB64 = btoa(bin);
+  const domLow = (domainLock || "").toLowerCase();
+  const domainGuard = domLow
+    ? `var __al=${JSON.stringify(domLow)};var __h=(location.hostname||'').toLowerCase();if(__h&&__h!==__al){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px\\"><div><h1 style=\\"font-size:48px;margin:0 0 12px\\">DOMAIN LOCK</h1><p style=\\"opacity:.7\\">Unauthorized domain</p></div></div>';return;}`
+    : "";
 
-  // Build server-import URL — the decryption runtime lives on the MK server
-  const params = new URLSearchParams();
-  params.set("p", payloadB64);
-  params.set("k1", String(K1));
-  params.set("k2", String(K2));
-  params.set("r", String(ROT));
-  if (domainLock) params.set("d", domainLock.toLowerCase());
-  const loaderUrl = `${serverOrigin.replace(/\/$/, "")}/api/public/loader.js?${params.toString()}`;
+  // Self-contained inline loader — no external server dependency
+  const loaderScript = `(function(){try{${domainGuard}var ENC=${JSON.stringify(payloadB64)},K1=${K1},K2=${K2};var raw=atob(ENC),dec='';for(var i=0;i<raw.length;i++){var rk=(K1^((K2+i)&0xff))&0xff;dec+=String.fromCharCode(raw.charCodeAt(i)^rk);}function u8d(s){return decodeURIComponent(Array.prototype.map.call(atob(s),function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)}).join(''));}var html=u8d(u8d(u8d(dec)));try{document.addEventListener('contextmenu',function(e){e.preventDefault();});document.addEventListener('keydown',function(e){if(e.keyCode===123)e.preventDefault();if(e.ctrlKey&&e.shiftKey&&(e.keyCode===73||e.keyCode===74||e.keyCode===67))e.preventDefault();if(e.ctrlKey&&(e.keyCode===85||e.keyCode===83))e.preventDefault();});}catch(e){}try{['log','warn','info','debug','trace','table','dir'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});}catch(e){}function mount(){var blob=new Blob([html],{type:'text/html;charset=utf-8'});var ifr=document.createElement('iframe');ifr.src=URL.createObjectURL(blob);ifr.setAttribute('sandbox','allow-scripts allow-forms allow-same-origin allow-popups allow-modals allow-downloads');ifr.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:none;margin:0;padding:0';(document.body||document.documentElement).appendChild(ifr);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}}catch(e){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#08080b;color:#ff4d4d;text-align:center;padding:24px\\"><h1>PAYLOAD ERROR</h1></div>';}})();`;
 
   const out = `${headerComment}<!DOCTYPE html>
 <html lang="en">
@@ -80,24 +74,14 @@ function generate(rawHTML: string, domainLock: string, serverOrigin: string) {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="mk-protected-credit" content="${CREDIT_TEXT}" data-sign="${CREDIT_HASH}">
-<meta name="mk-server" content="${serverOrigin}">
 <meta name="mk-signature" content="${SIGNATURE}">
 <title>Protected</title>
 <style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#fff;}iframe{width:100%;height:100%;border:none;display:block;}</style>
 </head>
 <body>
-<!--
-  ============================================================
-   This file is PROTECTED by ${OWNER}.
-   The decryption runtime is served from a remote MK server:
-       ${serverOrigin}/api/public/loader.js
-   Do NOT modify the <script src=...> tag below — without the
-   server import the encrypted payload cannot execute.
-   Signature: ${SIGNATURE}
-  ============================================================
--->
-<script src="${loaderUrl}" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-<noscript>This protected file requires JavaScript and access to ${serverOrigin}.</noscript>
+<!-- PROTECTED by ${OWNER} · Self-contained encrypted payload · Signature: ${SIGNATURE} -->
+<script>${loaderScript}</script>
+<noscript>This protected file requires JavaScript.</noscript>
 </body>
 </html>`;
 
