@@ -15,15 +15,6 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-function randomString(length = 10) {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
 function utf8Encode(text: string) {
   return btoa(
     encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
@@ -32,9 +23,9 @@ function utf8Encode(text: string) {
   );
 }
 
-function utf8Decode_src() {
-  // returned as string for embedding in generated output
-  return `function utf8Decode(b){return decodeURIComponent(Array.prototype.map.call(atob(b),function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)}).join(''))}`;
+
+function toUrlSafeB64(s: string) {
+  return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
 function checksum(text: string) {
@@ -46,163 +37,42 @@ function checksum(text: string) {
   return (hash >>> 0).toString(36).toUpperCase();
 }
 
-function generate(rawHTML: string, domainLock: string) {
+function generate(rawHTML: string, domainLock: string, serverOrigin: string) {
   const OWNER = "@MK_BRO_1";
   const SIGNATURE = "MKIRAJ9619_HTMLOBF_PROTECTED";
   const timestamp = new Date().toLocaleString();
   const CREDIT_TEXT = `PROTECTED_BY_${OWNER}_${SIGNATURE}`;
   const CREDIT_HASH = checksum(CREDIT_TEXT);
 
-  const headerCommentBody = `\n  ====================================================\n   PROTECTED BY ULTIMATE HTML OBFUSCATOR\n   Owner: ${OWNER}\n   Signature: ${SIGNATURE}\n   Generated: ${timestamp}\n  ====================================================\n`;
-  const HEADER_HASH = checksum(headerCommentBody);
-  // Place comment INSIDE <head> so it lives in the DOM as a Comment node and we can verify it.
-  const headerCommentInHead = `<!--${headerCommentBody}-->\n<!--MK-HEADER-SIGN:${HEADER_HASH}-->`;
-  // Visible top banner (decorative duplicate); we verify the in-DOM one.
+  const headerCommentBody = `\n  ====================================================\n   PROTECTED BY ULTIMATE HTML OBFUSCATOR\n   Owner: ${OWNER}\n   Signature: ${SIGNATURE}\n   Server:  ${serverOrigin}\n   Generated: ${timestamp}\n  ====================================================\n`;
   const headerComment = `<!--${headerCommentBody}-->\n`;
 
-  // ===== Per-build random keys (different every generation) =====
-  const KEY1 = Math.floor(Math.random() * 200) + 30; // 30..229
-  const KEY2 = Math.floor(Math.random() * 200) + 30;
-  const KEY3 = Math.floor(Math.random() * 200) + 30;
-  const ROT = Math.floor(Math.random() * 0x3000) + 0x4e00; // CJK base offset varies
+  // Per-build random keys (different every generation)
+  const K1 = Math.floor(Math.random() * 200) + 30;
+  const K2 = Math.floor(Math.random() * 200) + 30;
+  const ROT = Math.floor(Math.random() * 0x3000) + 0x4e00;
 
-  // Triple base64 layered encoding of the raw payload
+  // Triple base64 utf8-safe encoding
   const l1 = utf8Encode(rawHTML);
   const l2 = utf8Encode(l1);
   const l3 = utf8Encode(l2);
 
-  // Rolling-key Chinese cipher: XOR with (KEY1 ^ KEY2 ^ (i&0xff)) then shift to CJK range with random base
-  let chinese = "";
+  // Rolling-XOR -> binary string -> URL-safe base64 (so it travels in URL params)
+  let bin = "";
   for (let i = 0; i < l3.length; i++) {
-    const rk = (KEY1 ^ KEY2 ^ (KEY3 + i) & 0xff) & 0xff;
-    chinese += String.fromCharCode((l3.charCodeAt(i) ^ rk) + ROT);
+    const rk = (K1 ^ ((K2 + i) & 0xff)) & 0xff;
+    bin += String.fromCharCode(l3.charCodeAt(i) ^ rk);
   }
+  const payloadB64 = toUrlSafeB64(bin);
 
-  const chineseLiteral = JSON.stringify(chinese);
-
-  const v = {
-    payload: "_" + randomString(8),
-    decode: "_" + randomString(8),
-    iframe: "_" + randomString(8),
-    blob: "_" + randomString(8),
-    url: "_" + randomString(8),
-    raw: "_" + randomString(8),
-    k1: "_" + randomString(6),
-    k2: "_" + randomString(6),
-    k3: "_" + randomString(6),
-    rot: "_" + randomString(6),
-    fn: "_" + randomString(8),
-    boot: "_" + randomString(8),
-  };
-
-  const domainCheck = domainLock
-    ? `(function(){var allowed=${JSON.stringify(domainLock.toLowerCase())};var host=(location.hostname||'').toLowerCase();if(host!==allowed){document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px"><div><h1 style="font-size:48px;margin:0 0 12px">🔒 DOMAIN LOCK</h1><p style="opacity:.7">Unauthorized domain detected</p></div></div>';throw new Error('DOMAIN BLOCKED');}})();`
-    : "";
-
-  // ===== Inner program: the actual decode+execute (will be wrapped & encrypted) =====
-  const innerProgram = `
-${utf8Decode_src()}
-(function(){
-  var ${v.k1}=${KEY1},${v.k2}=${KEY2},${v.k3}=${KEY3},${v.rot}=${ROT};
-  var ${v.raw}=${chineseLiteral};
-  var ${v.payload}='';
-  for(var i=0;i<${v.raw}.length;i++){
-    var rk=(${v.k1}^${v.k2}^(${v.k3}+i)&0xff)&0xff;
-    ${v.payload}+=String.fromCharCode((${v.raw}.charCodeAt(i)-${v.rot})^rk);
-  }
-  var ${v.decode}=utf8Decode(utf8Decode(utf8Decode(${v.payload})));
-  var ${v.blob}=new Blob([${v.decode}],{type:'text/html'});
-  var ${v.url}=URL.createObjectURL(${v.blob});
-  var ${v.iframe}=document.createElement('iframe');
-  ${v.iframe}.src=${v.url};
-  ${v.iframe}.setAttribute('sandbox','allow-scripts allow-forms allow-same-origin allow-popups allow-modals');
-  document.body.appendChild(${v.iframe});
-})();`.trim();
-
-  // ===== Encrypt the inner program with another rolling XOR + CJK shift =====
-  const PK1 = Math.floor(Math.random() * 200) + 30;
-  const PK2 = Math.floor(Math.random() * 200) + 30;
-  const PROT = Math.floor(Math.random() * 0x2000) + 0x5000;
-  let innerEnc = "";
-  for (let i = 0; i < innerProgram.length; i++) {
-    const rk = (PK1 ^ (PK2 + i) & 0xff) & 0xff;
-    innerEnc += String.fromCharCode((innerProgram.charCodeAt(i) ^ rk) + PROT);
-  }
-  const innerLit = JSON.stringify(innerEnc);
-
-  // ===== Outer bootstrap runtime: integrity + anti-debug + decrypt-and-run =====
-  const runtime = `
-${domainCheck}
-(function(){
-  function __mkHash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36).toUpperCase();}
-  function __violation(msg){try{document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#08080b;color:#ff4d4d;text-align:center;padding:24px"><div style="max-width:620px"><div style="font-size:54px;margin-bottom:14px">🚫</div><h1 style="font-size:42px;line-height:1.05;margin:0 0 12px;letter-spacing:-.03em">VIOLATION DETECTED</h1><p style="font-size:18px;margin:0;color:#ffd1d1">Protected file modified or debugger detected.</p><p style="font-size:13px;margin-top:16px;color:#8f8f98">'+msg+'</p></div></div>';}catch(e){}try{window.stop&&window.stop();}catch(e){}throw new Error(msg);}
-
-  // ---- Credit + header integrity ----
-  var credit=document.querySelector('meta[name="mk-protected-credit"]');
-  if(!credit || credit.getAttribute('content')!==${JSON.stringify(CREDIT_TEXT)} || credit.getAttribute('data-sign')!==${JSON.stringify(CREDIT_HASH)} || __mkHash(credit.getAttribute('content')||'')!==credit.getAttribute('data-sign')) __violation('CREDIT_REMOVED_OR_TAMPERED');
-  var badge=document.getElementById('mk-protected-credit');
-  if(!badge || badge.textContent!==${JSON.stringify(CREDIT_TEXT)} || badge.getAttribute('data-sign')!==${JSON.stringify(CREDIT_HASH)}) __violation('CREDIT_BADGE_REMOVED_OR_TAMPERED');
-  var __expectedHeader=${JSON.stringify(headerCommentBody)};
-  var __expectedHeaderHash=${JSON.stringify(HEADER_HASH)};
-  var __nodes=document.head?document.head.childNodes:[];
-  var __fH=false,__fS=false;
-  for(var __i=0;__i<__nodes.length;__i++){var __n=__nodes[__i];if(__n.nodeType===8){if(__n.nodeValue===__expectedHeader)__fH=true;if(__n.nodeValue==='MK-HEADER-SIGN:'+__expectedHeaderHash)__fS=true;}}
-  if(!__fH||!__fS||__mkHash(__expectedHeader)!==__expectedHeaderHash) __violation('HEADER_CREDIT_COMMENT_REMOVED_OR_TAMPERED');
-  if(document.documentElement.outerHTML.indexOf(${JSON.stringify(SIGNATURE)})===-1) __violation('SIGNATURE_REMOVED');
-
-  // ---- Anti-debug: timing trap (debugger pauses inflate dt) ----
-  (function __ad(){
-    var loop=function(){
-      var t=Date.now();
-      debugger;
-      if(Date.now()-t>120){__violation('DEBUGGER_DETECTED');}
-      setTimeout(loop,1500+Math.random()*500);
-    };
-    try{loop();}catch(e){}
-  })();
-
-  // ---- DevTools detection by viewport delta ----
-  (function __dt(){
-    setInterval(function(){
-      var w=window.outerWidth-window.innerWidth;
-      var h=window.outerHeight-window.innerHeight;
-      if(w>200||h>200){__violation('DEVTOOLS_OPEN');}
-    },1200);
-  })();
-
-  // ---- Console neutralization ----
-  try{var __c=['log','warn','info','debug','trace','table','dir'];for(var __ci=0;__ci<__c.length;__ci++){try{window.console[__c[__ci]]=function(){};}catch(e){}}}catch(e){}
-
-  // ---- Self-integrity: ensure native fns weren't patched ----
-  try{
-    if(String(Function.prototype.toString).indexOf('[native code]')===-1) __violation('NATIVE_PATCHED_TOSTRING');
-    if(String(Array.prototype.map).indexOf('[native code]')===-1) __violation('NATIVE_PATCHED_MAP');
-    if(String(atob).indexOf('[native code]')===-1) __violation('NATIVE_PATCHED_ATOB');
-  }catch(e){__violation('NATIVE_CHECK_FAILED');}
-
-  // ---- Decrypt & execute inner program via Function (VM-like) ----
-  try{
-    var __PK1=${PK1},__PK2=${PK2},__PROT=${PROT};
-    var __enc=${innerLit};
-    var __src='';
-    for(var __k=0;__k<__enc.length;__k++){
-      var __rk=(__PK1^(__PK2+__k)&0xff)&0xff;
-      __src+=String.fromCharCode((__enc.charCodeAt(__k)-__PROT)^__rk);
-    }
-    var ${v.fn}=Function(__src);
-    ${v.fn}();
-  }catch(__e){__violation('PAYLOAD_TAMPERED');}
-
-  // ---- Anti-inspect shortcuts ----
-  document.addEventListener('contextmenu',function(e){e.preventDefault();});
-  document.addEventListener('keydown',function(e){
-    if(e.keyCode===123) e.preventDefault();
-    if(e.ctrlKey&&e.shiftKey&&(e.keyCode===73||e.keyCode===74||e.keyCode===67)) e.preventDefault();
-    if(e.ctrlKey&&(e.keyCode===85||e.keyCode===83)) e.preventDefault();
-  });
-})();
-`.trim();
-
+  // Build server-import URL — the decryption runtime lives on the MK server
+  const params = new URLSearchParams();
+  params.set("p", payloadB64);
+  params.set("k1", String(K1));
+  params.set("k2", String(K2));
+  params.set("r", String(ROT));
+  if (domainLock) params.set("d", domainLock.toLowerCase());
+  const loaderUrl = `${serverOrigin.replace(/\/$/, "")}/api/public/loader.js?${params.toString()}`;
 
   const out = `${headerComment}<!DOCTYPE html>
 <html lang="en">
@@ -210,20 +80,30 @@ ${domainCheck}
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <meta name="mk-protected-credit" content="${CREDIT_TEXT}" data-sign="${CREDIT_HASH}">
-${headerCommentInHead}
+<meta name="mk-server" content="${serverOrigin}">
+<meta name="mk-signature" content="${SIGNATURE}">
 <title>Protected</title>
 <style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#fff;}iframe{width:100%;height:100%;border:none;display:block;}</style>
 </head>
 <body>
-<div id="mk-protected-credit" data-sign="${CREDIT_HASH}" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none;user-select:none">${CREDIT_TEXT}</div>
-<script>
-${runtime}
-</script>
+<!--
+  ============================================================
+   This file is PROTECTED by ${OWNER}.
+   The decryption runtime is served from a remote MK server:
+       ${serverOrigin}/api/public/loader.js
+   Do NOT modify the <script src=...> tag below — without the
+   server import the encrypted payload cannot execute.
+   Signature: ${SIGNATURE}
+  ============================================================
+-->
+<script src="${loaderUrl}" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<noscript>This protected file requires JavaScript and access to ${serverOrigin}.</noscript>
 </body>
 </html>`;
 
   return out;
 }
+
 
 function Index() {
   const [source, setSource] = useState("");
@@ -241,7 +121,7 @@ function Index() {
     setGenerating(true);
     setTimeout(() => {
       try {
-        setOutput(generate(source, domain));
+        setOutput(generate(source, domain, window.location.origin));
       } catch (err) {
         alert("Encryption failed: " + (err as Error).message);
       } finally {
