@@ -31,13 +31,6 @@ function checksum(text: string) {
   }
   return (hash >>> 0).toString(36).toUpperCase();
 }
-  let hash = 2166136261;
-  for (let i = 0; i < text.length; i++) {
-    hash ^= text.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0).toString(36).toUpperCase();
-}
 
 function generate(rawHTML: string, domainLock: string, _serverOrigin: string) {
   const OWNER = "@MK_BRO_1";
