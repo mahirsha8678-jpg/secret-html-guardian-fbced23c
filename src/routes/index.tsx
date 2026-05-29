@@ -134,7 +134,7 @@ function Index() {
     setGenerating(true);
     setTimeout(() => {
       try {
-        setOutput(generate(source, domain));
+        setOutput(generate(source, domain, window.location.origin));
       } catch (err) {
         alert("Encryption failed: " + (err as Error).message);
       } finally {
