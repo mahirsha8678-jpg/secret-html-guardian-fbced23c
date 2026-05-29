@@ -15,15 +15,6 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-function randomString(length = 10) {
-  const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
 function utf8Encode(text: string) {
   return btoa(
     encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
@@ -32,10 +23,6 @@ function utf8Encode(text: string) {
   );
 }
 
-function utf8Decode_src() {
-  // returned as string for embedding in generated output
-  return `function utf8Decode(b){return decodeURIComponent(Array.prototype.map.call(atob(b),function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)}).join(''))}`;
-}
 
 function toUrlSafeB64(s: string) {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
