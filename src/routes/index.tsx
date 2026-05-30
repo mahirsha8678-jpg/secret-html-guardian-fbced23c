@@ -256,29 +256,39 @@ function Index() {
                   {(output.length / 1024).toFixed(1)} KB
                 </span>
               </h2>
-              <div className="flex gap-2">
-                <button
-                  onClick={handleCopy}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold border border-obf-border hover:border-obf-accent hover:text-obf-accent transition"
-                >
-                  {copied ? "✓ COPIED" : "COPY"}
-                </button>
-                <button
-                  onClick={handleDownload}
-                  className="px-4 py-2 rounded-lg text-xs font-semibold bg-obf-accent text-obf-bg hover:opacity-90 transition"
-                >
-                  ↓ DOWNLOAD
-                </button>
-              </div>
             </div>
+
+            {/* Big, easy action buttons (mobile-friendly) */}
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              <button
+                onClick={handleCopy}
+                className="flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold border-2 border-obf-accent/40 bg-obf-accent/10 text-obf-accent hover:bg-obf-accent/20 active:scale-[0.98] transition"
+              >
+                {copied ? "✓ COPIED!" : "📋 COPY ALL"}
+              </button>
+              <button
+                onClick={handleDownload}
+                className="flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold bg-obf-accent text-obf-bg hover:opacity-90 active:scale-[0.98] transition shadow-obf-glow"
+              >
+                ⬇ DOWNLOAD .HTML
+              </button>
+            </div>
+
+            <p className="text-[11px] text-obf-muted text-center mb-3">
+              Tip: নিচের বক্সে ট্যাপ করলেই পুরো কোড সিলেক্ট হয়ে যাবে
+            </p>
+
             <textarea
               ref={outRef}
               value={output}
               readOnly
-              className="w-full h-72 px-4 py-3 rounded-xl bg-obf-input border border-obf-border font-mono text-xs resize-y focus:outline-none"
+              onFocus={(e) => e.currentTarget.select()}
+              onClick={(e) => (e.currentTarget as HTMLTextAreaElement).select()}
+              className="w-full h-60 px-4 py-3 rounded-xl bg-obf-input border border-obf-border font-mono text-xs resize-y focus:outline-none focus:border-obf-accent cursor-pointer"
             />
           </section>
         )}
+
 
         {/* Features */}
         <section className="mt-12 grid sm:grid-cols-3 gap-4">
