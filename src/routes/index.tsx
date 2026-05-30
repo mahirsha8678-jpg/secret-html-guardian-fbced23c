@@ -128,9 +128,25 @@ function Index() {
 
   const handleCopy = async () => {
     if (!output) return;
-    await navigator.clipboard.writeText(output);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(output);
+      } else {
+        // Fallback for mobile / non-secure contexts
+        const ta = outRef.current;
+        if (ta) {
+          ta.focus();
+          ta.select();
+          document.execCommand("copy");
+        }
+      }
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      // Last-resort: select text so user can long-press copy
+      outRef.current?.select();
+      alert("কপি করতে কোডবক্স থেকে long-press করে Copy চাপুন");
+    }
   };
 
   const handleDownload = () => {
