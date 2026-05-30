@@ -38,6 +38,17 @@ function generate(rawHTML: string, domainLock: string, _serverOrigin: string) {
   const timestamp = new Date().toLocaleString();
   const CREDIT_TEXT = `PROTECTED_BY_${OWNER}_${SIGNATURE}`;
   const CREDIT_HASH = checksum(CREDIT_TEXT);
+  // Credit-bound key: loader rebuilds these masks from the meta tags at
+  // runtime. Remove or edit the credit → masks change → decryption fails.
+  const CKH = checksum(`${CREDIT_TEXT}|${CREDIT_HASH}|${SIGNATURE}`);
+  let _a = 0,
+    _b = 0;
+  for (let i = 0; i < CKH.length; i++) {
+    _a = (_a + CKH.charCodeAt(i) * 31) & 0xff;
+    _b = (_b ^ ((CKH.charCodeAt(i) << (i % 5)) & 0xff)) & 0xff;
+  }
+  const CM1 = _a || 0x5a;
+  const CM2 = _b || 0xa5;
 
   const headerCommentBody = `\n  ====================================================\n   PROTECTED BY ULTIMATE HTML OBFUSCATOR\n   Owner: ${OWNER}\n   Signature: ${SIGNATURE}\n   Generated: ${timestamp}\n  ====================================================\n`;
   const headerComment = `<!--${headerCommentBody}-->\n`;
@@ -52,16 +63,22 @@ function generate(rawHTML: string, domainLock: string, _serverOrigin: string) {
   let bin = "";
   for (let i = 0; i < l3.length; i++) {
     const rk = (K1 ^ ((K2 + i) & 0xff)) & 0xff;
-    bin += String.fromCharCode(l3.charCodeAt(i) ^ rk);
+    const cm = (CM1 ^ ((CM2 + i) & 0xff)) & 0xff;
+    bin += String.fromCharCode(l3.charCodeAt(i) ^ rk ^ cm);
   }
+  void CM1;
+  void CM2;
   const payloadB64 = btoa(bin);
   const domLow = (domainLock || "").toLowerCase();
   const domainGuard = domLow
     ? `var __al=${JSON.stringify(domLow)};var __h=(location.hostname||'').toLowerCase();if(__h&&__h!==__al){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px\\"><div><h1 style=\\"font-size:48px;margin:0 0 12px\\">DOMAIN LOCK</h1><p style=\\"opacity:.7\\">Unauthorized domain</p></div></div>';return;}`
     : "";
 
-  // Self-contained inline loader — no external server dependency
-  const loaderScript = `(function(){try{${domainGuard}var ENC=${JSON.stringify(payloadB64)},K1=${K1},K2=${K2};var raw=atob(ENC),dec='';for(var i=0;i<raw.length;i++){var rk=(K1^((K2+i)&0xff))&0xff;dec+=String.fromCharCode(raw.charCodeAt(i)^rk);}function u8d(s){return decodeURIComponent(Array.prototype.map.call(atob(s),function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)}).join(''));}var html=u8d(u8d(u8d(dec)));try{document.addEventListener('contextmenu',function(e){e.preventDefault();});document.addEventListener('keydown',function(e){if(e.keyCode===123)e.preventDefault();if(e.ctrlKey&&e.shiftKey&&(e.keyCode===73||e.keyCode===74||e.keyCode===67))e.preventDefault();if(e.ctrlKey&&(e.keyCode===85||e.keyCode===83))e.preventDefault();});}catch(e){}try{['log','warn','info','debug','trace','table','dir'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});}catch(e){}function mount(){var blob=new Blob([html],{type:'text/html;charset=utf-8'});var ifr=document.createElement('iframe');ifr.src=URL.createObjectURL(blob);ifr.setAttribute('sandbox','allow-scripts allow-forms allow-same-origin allow-popups allow-modals allow-downloads');ifr.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:none;margin:0;padding:0';(document.body||document.documentElement).appendChild(ifr);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}}catch(e){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#08080b;color:#ff4d4d;text-align:center;padding:24px\\"><h1>PAYLOAD ERROR</h1></div>';}})();`;
+  // Runtime credit guard — without credit meta, masks are wrong & page breaks.
+  const creditGuard = `function __mk_h(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36).toUpperCase();}var __mc=document.querySelector('meta[name="mk-protected-credit"]'),__ms=document.querySelector('meta[name="mk-signature"]');if(!__mc||!__ms){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px\\"><div><h1 style=\\"font-size:42px;margin:0 0 12px\\">&#9888;&#65039; CREDIT REMOVED</h1><p style=\\"opacity:.7\\">Protected by @MK_BRO_1 &mdash; tamper detected</p></div></div>';return;}var __ct=__mc.getAttribute('content')||'',__cs=__mc.getAttribute('data-sign')||'',__sg=__ms.getAttribute('content')||'';if(__mk_h(__ct)!==__cs){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px\\"><h1>&#9888;&#65039; CREDIT TAMPERED</h1></div>';return;}var __ck=__mk_h(__ct+'|'+__cs+'|'+__sg),__a=0,__b=0;for(var __i=0;__i<__ck.length;__i++){__a=(__a+__ck.charCodeAt(__i)*31)&0xff;__b=(__b^((__ck.charCodeAt(__i)<<(__i%5))&0xff))&0xff;}var CM1=__a||0x5a,CM2=__b||0xa5;`;
+
+  // Self-contained inline loader — credit-bound, no external dependency
+  const loaderScript = `(function(){try{${domainGuard}${creditGuard}var ENC=${JSON.stringify(payloadB64)},K1=${K1},K2=${K2};var raw=atob(ENC),dec='';for(var i=0;i<raw.length;i++){var rk=(K1^((K2+i)&0xff))&0xff;var cm=(CM1^((CM2+i)&0xff))&0xff;dec+=String.fromCharCode(raw.charCodeAt(i)^rk^cm);}function u8d(s){return decodeURIComponent(Array.prototype.map.call(atob(s),function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)}).join(''));}var html=u8d(u8d(u8d(dec)));try{document.addEventListener('contextmenu',function(e){e.preventDefault();});document.addEventListener('keydown',function(e){if(e.keyCode===123)e.preventDefault();if(e.ctrlKey&&e.shiftKey&&(e.keyCode===73||e.keyCode===74||e.keyCode===67))e.preventDefault();if(e.ctrlKey&&(e.keyCode===85||e.keyCode===83))e.preventDefault();});}catch(e){}try{['log','warn','info','debug','trace','table','dir'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});}catch(e){}function mount(){var blob=new Blob([html],{type:'text/html;charset=utf-8'});var ifr=document.createElement('iframe');ifr.src=URL.createObjectURL(blob);ifr.setAttribute('sandbox','allow-scripts allow-forms allow-same-origin allow-popups allow-modals allow-downloads');ifr.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:none;margin:0;padding:0';(document.body||document.documentElement).appendChild(ifr);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}}catch(e){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#08080b;color:#ff4d4d;text-align:center;padding:24px\\"><h1>PAYLOAD ERROR</h1></div>';}})();`;
 
   const out = `${headerComment}<!DOCTYPE html>
 <html lang="en">
