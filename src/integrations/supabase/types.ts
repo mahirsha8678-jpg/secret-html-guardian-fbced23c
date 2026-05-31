@@ -14,7 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      protected_payloads: {
+        Row: {
+          created_at: string
+          credit_hash: string
+          credit_text: string
+          domain_lock: string | null
+          id: string
+          k1: number
+          k2: number
+          payload: string
+          signature: string
+        }
+        Insert: {
+          created_at?: string
+          credit_hash: string
+          credit_text: string
+          domain_lock?: string | null
+          id?: string
+          k1: number
+          k2: number
+          payload: string
+          signature: string
+        }
+        Update: {
+          created_at?: string
+          credit_hash?: string
+          credit_text?: string
+          domain_lock?: string | null
+          id?: string
+          k1?: number
+          k2?: number
+          payload?: string
+          signature?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
