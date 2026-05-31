@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef } from "react";
+
+import { saveProtectedPayload } from "@/lib/protectedPayloads.functions";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -32,14 +35,23 @@ function checksum(text: string) {
   return (hash >>> 0).toString(36).toUpperCase();
 }
 
-function generate(rawHTML: string, domainLock: string, _serverOrigin: string) {
+type EncryptedBundle = {
+  payload: string;
+  k1: number;
+  k2: number;
+  creditText: string;
+  creditHash: string;
+  signature: string;
+  domainLock: string;
+  headerComment: string;
+};
+
+function encryptForServer(rawHTML: string, domainLock: string): EncryptedBundle {
   const OWNER = "@MK_BRO_1";
   const SIGNATURE = "MKIRAJ9619_HTMLOBF_PROTECTED";
   const timestamp = new Date().toLocaleString();
   const CREDIT_TEXT = `PROTECTED_BY_${OWNER}_${SIGNATURE}`;
   const CREDIT_HASH = checksum(CREDIT_TEXT);
-  // Credit-bound key: loader rebuilds these masks from the meta tags at
-  // runtime. Remove or edit the credit → masks change → decryption fails.
   const CKH = checksum(`${CREDIT_TEXT}|${CREDIT_HASH}|${SIGNATURE}`);
   let _a = 0,
     _b = 0;
@@ -55,15 +67,11 @@ function generate(rawHTML: string, domainLock: string, _serverOrigin: string) {
 
   const K1 = Math.floor(Math.random() * 200) + 30;
   const K2 = Math.floor(Math.random() * 200) + 30;
-
-  // Single-pass UTF-8 → base64 (handles any size, no triple-decode failure)
   const l3 = utf8Encode(rawHTML);
-
-  let bin = "";
-  // Chunk-build to avoid mega-string overhead on huge inputs
   const parts: string[] = [];
   const CHUNK = 4096;
   let buf = "";
+
   for (let i = 0; i < l3.length; i++) {
     const rk = (K1 ^ ((K2 + i) & 0xff)) & 0xff;
     const cm = (CM1 ^ ((CM2 + i) & 0xff)) & 0xff;
@@ -74,41 +82,40 @@ function generate(rawHTML: string, domainLock: string, _serverOrigin: string) {
     }
   }
   if (buf) parts.push(buf);
-  bin = parts.join("");
-  void CM1;
-  void CM2;
-  const payloadB64 = btoa(bin);
-  const domLow = (domainLock || "").toLowerCase();
-  const domainGuard = domLow
-    ? `var __al=${JSON.stringify(domLow)};var __h=(location.hostname||'').toLowerCase();if(__h&&__h!==__al){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px\\"><div><h1 style=\\"font-size:48px;margin:0 0 12px\\">DOMAIN LOCK</h1><p style=\\"opacity:.7\\">Unauthorized domain</p></div></div>';return;}`
-    : "";
 
-  // Runtime credit guard — without credit meta, masks are wrong & page breaks.
-  const creditGuard = `function __mk_h(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36).toUpperCase();}var __mc=document.querySelector('meta[name="mk-protected-credit"]'),__ms=document.querySelector('meta[name="mk-signature"]');if(!__mc||!__ms){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px\\"><div><h1 style=\\"font-size:42px;margin:0 0 12px\\">&#9888;&#65039; CREDIT REMOVED</h1><p style=\\"opacity:.7\\">Protected by @MK_BRO_1 &mdash; tamper detected</p></div></div>';return;}var __ct=__mc.getAttribute('content')||'',__cs=__mc.getAttribute('data-sign')||'',__sg=__ms.getAttribute('content')||'';if(__mk_h(__ct)!==__cs){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px\\"><h1>&#9888;&#65039; CREDIT TAMPERED</h1></div>';return;}var __ck=__mk_h(__ct+'|'+__cs+'|'+__sg),__a=0,__b=0;for(var __i=0;__i<__ck.length;__i++){__a=(__a+__ck.charCodeAt(__i)*31)&0xff;__b=(__b^((__ck.charCodeAt(__i)<<(__i%5))&0xff))&0xff;}var CM1=__a||0x5a,CM2=__b||0xa5;`;
+  return {
+    payload: btoa(parts.join("")),
+    k1: K1,
+    k2: K2,
+    creditText: CREDIT_TEXT,
+    creditHash: CREDIT_HASH,
+    signature: SIGNATURE,
+    domainLock: (domainLock || "").trim().toLowerCase(),
+    headerComment,
+  };
+}
 
-  // Self-contained inline loader — single-pass decode, large-payload safe
-  const loaderScript = `(function(){try{${domainGuard}${creditGuard}var ENC=${JSON.stringify(payloadB64)},K1=${K1},K2=${K2};var raw=atob(ENC),L=raw.length,out=new Array(L);for(var i=0;i<L;i++){var rk=(K1^((K2+i)&0xff))&0xff;var cm=(CM1^((CM2+i)&0xff))&0xff;out[i]=String.fromCharCode(raw.charCodeAt(i)^rk^cm);}var dec=out.join('');function u8d(s){try{return decodeURIComponent(escape(s));}catch(e){return s;}}var html=u8d(dec);try{document.addEventListener('contextmenu',function(e){e.preventDefault();});document.addEventListener('keydown',function(e){if(e.keyCode===123)e.preventDefault();if(e.ctrlKey&&e.shiftKey&&(e.keyCode===73||e.keyCode===74||e.keyCode===67))e.preventDefault();if(e.ctrlKey&&(e.keyCode===85||e.keyCode===83))e.preventDefault();});}catch(e){}try{['log','warn','info','debug','trace','table','dir'].forEach(function(m){try{window.console[m]=function(){}}catch(e){}});}catch(e){}function mount(){var blob=new Blob([html],{type:'text/html;charset=utf-8'});var ifr=document.createElement('iframe');ifr.src=URL.createObjectURL(blob);ifr.setAttribute('sandbox','allow-scripts allow-forms allow-same-origin allow-popups allow-modals allow-downloads');ifr.style.cssText='position:fixed;inset:0;width:100%;height:100%;border:none;margin:0;padding:0';(document.body||document.documentElement).appendChild(ifr);}if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',mount);}else{mount();}}catch(e){document.documentElement.innerHTML='<div style=\\"font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#08080b;color:#ff4d4d;text-align:center;padding:24px\\"><h1>PAYLOAD ERROR</h1><pre style=\\"color:#888;font-size:11px\\">'+(e&&e.message||'')+'</pre></div>';}})();`;
+function buildServerHostedOutput(payloadId: string, bundle: EncryptedBundle, serverOrigin: string) {
+  const OWNER = "@MK_BRO_1";
+  const loaderUrl = `${serverOrigin}/api/public/loader.js?id=${encodeURIComponent(payloadId)}`;
 
-  const out = `${headerComment}<!DOCTYPE html>
+  return `${bundle.headerComment}<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="mk-protected-credit" content="${CREDIT_TEXT}" data-sign="${CREDIT_HASH}">
-<meta name="mk-signature" content="${SIGNATURE}">
+<meta name="mk-protected-credit" content="${bundle.creditText}" data-sign="${bundle.creditHash}">
+<meta name="mk-signature" content="${bundle.signature}">
 <title>Protected</title>
 <style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#fff;}iframe{width:100%;height:100%;border:none;display:block;}</style>
 </head>
 <body>
-<!-- PROTECTED by ${OWNER} · Self-contained encrypted payload · Signature: ${SIGNATURE} -->
-<script>${loaderScript}</script>
+<!-- PROTECTED by ${OWNER} · Server-hosted encrypted payload · ID: ${payloadId} -->
+<script src="${loaderUrl}" defer></script>
 <noscript>This protected file requires JavaScript.</noscript>
 </body>
 </html>`;
-
-  return out;
 }
-
 
 function Index() {
   const [source, setSource] = useState("");
@@ -117,22 +124,23 @@ function Index() {
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
   const outRef = useRef<HTMLTextAreaElement>(null);
+  const savePayload = useServerFn(saveProtectedPayload);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!source.trim()) {
       alert("অনুগ্রহ করে আগে HTML কোড দিন");
       return;
     }
     setGenerating(true);
-    setTimeout(() => {
-      try {
-        setOutput(generate(source, domain, window.location.origin));
-      } catch (err) {
-        alert("Encryption failed: " + (err as Error).message);
-      } finally {
-        setGenerating(false);
-      }
-    }, 60);
+    try {
+      const encrypted = encryptForServer(source, domain);
+      const saved = await savePayload({ data: encrypted });
+      setOutput(buildServerHostedOutput(saved.id, encrypted, window.location.origin));
+    } catch (err) {
+      alert("Encryption failed: " + (err as Error).message);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleCopy = async () => {
@@ -188,8 +196,12 @@ function Index() {
               <span className="absolute -inset-0.5 rounded-2xl bg-obf-accent/30 blur-md -z-10" />
             </div>
             <div>
-              <p className="text-[10px] tracking-[0.4em] text-obf-muted uppercase">MK · Obfuscator</p>
-              <p className="text-sm font-bold tracking-wide">HTML NOOB <span className="text-obf-accent">PRO</span></p>
+              <p className="text-[10px] tracking-[0.4em] text-obf-muted uppercase">
+                MK · Obfuscator
+              </p>
+              <p className="text-sm font-bold tracking-wide">
+                HTML NOOB <span className="text-obf-accent">PRO</span>
+              </p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-obf-border bg-obf-card/60 backdrop-blur">
@@ -224,8 +236,8 @@ function Index() {
             ))}
           </div>
           <p className="mt-6 text-obf-muted max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
-            আপনার HTML / JS কোডকে বানান <span className="text-obf-fg font-semibold">অরক্ষনীয়</span> —
-            military-grade encryption, runtime isolation এবং tamper-proof credit lock একসাথে।
+            আপনার HTML / JS কোডকে বানান <span className="text-obf-fg font-semibold">অরক্ষনীয়</span>{" "}
+            — military-grade encryption, runtime isolation এবং tamper-proof credit lock একসাথে।
           </p>
         </section>
 
@@ -313,7 +325,6 @@ function Index() {
             />
           </section>
         )}
-
 
         {/* Features */}
         <section className="mt-12 grid sm:grid-cols-3 gap-4">

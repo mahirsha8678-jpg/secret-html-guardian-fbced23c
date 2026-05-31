@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-// GET /api/public/loader.js?p=<b64>&k1=&k2=&r=&d=<optional-domain-lock>
-// Returns runtime JS that decrypts payload and renders inside sandboxed iframe.
+import { getEncryptedPayload } from "@/lib/protectedPayloads.server";
+
+// GET /api/public/loader.js?id=<payload-id>
+// Returns runtime JS that pulls the encrypted payload from Lovable Cloud and renders it in a sandboxed iframe.
 export const Route = createFileRoute("/api/public/loader.js")({
   server: {
     handlers: {
@@ -17,11 +19,27 @@ export const Route = createFileRoute("/api/public/loader.js")({
       },
       GET: async ({ request }) => {
         const url = new URL(request.url);
-        const p = url.searchParams.get("p") || "";
-        const k1 = parseInt(url.searchParams.get("k1") || "0", 10) || 0;
-        const k2 = parseInt(url.searchParams.get("k2") || "0", 10) || 0;
-        const rot = parseInt(url.searchParams.get("r") || "0", 10) || 0;
-        const dom = url.searchParams.get("d") || "";
+        const id = url.searchParams.get("id") || "";
+
+        if (!/^[0-9a-f-]{36}$/i.test(id)) {
+          return new Response("throw new Error('INVALID_PAYLOAD_ID');", {
+            status: 400,
+            headers: { "Content-Type": "application/javascript; charset=utf-8" },
+          });
+        }
+
+        const row = await getEncryptedPayload(id);
+        if (!row) {
+          return new Response("throw new Error('PAYLOAD_NOT_FOUND');", {
+            status: 404,
+            headers: { "Content-Type": "application/javascript; charset=utf-8" },
+          });
+        }
+
+        const p = row.payload;
+        const k1 = row.k1;
+        const k2 = row.k2;
+        const dom = row.domainLock;
 
         const domainGuard = dom
           ? `var __al=${JSON.stringify(dom.toLowerCase())};if((location.hostname||'').toLowerCase()!==__al){document.documentElement.innerHTML='<div style=\\'font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px\\'><div><h1 style=\\'font-size:48px;margin:0 0 12px\\'>&#128274; DOMAIN LOCK</h1><p style=\\'opacity:.7\\'>Unauthorized domain detected</p></div></div>';throw new Error('DOMAIN_BLOCKED');}`
@@ -31,23 +49,23 @@ export const Route = createFileRoute("/api/public/loader.js")({
 (function(){
   try{
     ${domainGuard}
-    var ENC=${JSON.stringify(p)};
-    var K1=${k1},K2=${k2},ROT=${rot};
-    // URL-safe base64 -> binary string
-    var b=ENC.replace(/-/g,'+').replace(/_/g,'/');
-    while(b.length%4)b+='=';
-    var raw=atob(b);
-    // Reverse CJK shift + rolling XOR
-    var dec='';
-    for(var i=0;i<raw.length;i++){
+    function __mk_h(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36).toUpperCase();}
+    var __mc=document.querySelector('meta[name="mk-protected-credit"]'),__ms=document.querySelector('meta[name="mk-signature"]');
+    if(!__mc||!__ms)throw new Error('CREDIT_REMOVED');
+    var __ct=__mc.getAttribute('content')||'',__cs=__mc.getAttribute('data-sign')||'',__sg=__ms.getAttribute('content')||'';
+    if(__ct!==${JSON.stringify(row.creditText)}||__cs!==${JSON.stringify(row.creditHash)}||__sg!==${JSON.stringify(row.signature)}||__mk_h(__ct)!==__cs)throw new Error('CREDIT_TAMPERED');
+    var __ck=__mk_h(__ct+'|'+__cs+'|'+__sg),__a=0,__b=0;
+    for(var __i=0;__i<__ck.length;__i++){__a=(__a+__ck.charCodeAt(__i)*31)&0xff;__b=(__b^((__ck.charCodeAt(__i)<<(__i%5))&0xff))&0xff;}
+    var CM1=__a||0x5a,CM2=__b||0xa5;
+    var ENC=${JSON.stringify(p)},K1=${k1},K2=${k2};
+    var raw=atob(ENC),L=raw.length,out=new Array(L);
+    for(var i=0;i<L;i++){
       var rk=(K1^((K2+i)&0xff))&0xff;
-      var cc=raw.charCodeAt(i);
-      // raw is char-coded after subtracting ROT (we stored as 8-bit safe via base64 of XOR bytes)
-      dec+=String.fromCharCode(cc^rk);
+      var cm=(CM1^((CM2+i)&0xff))&0xff;
+      out[i]=String.fromCharCode(raw.charCodeAt(i)^rk^cm);
     }
-    // dec is base64-of-utf8 of the original HTML (triple wrapped)
-    function u8d(s){return decodeURIComponent(Array.prototype.map.call(atob(s),function(c){return '%'+('00'+c.charCodeAt(0).toString(16)).slice(-2)}).join(''))}
-    var html=u8d(u8d(u8d(dec)));
+    function u8d(s){try{return decodeURIComponent(escape(s));}catch(e){return s;}}
+    var html=u8d(out.join(''));
     // Anti-inspect
     try{document.addEventListener('contextmenu',function(e){e.preventDefault();});
     document.addEventListener('keydown',function(e){
