@@ -35,7 +35,10 @@ type ProtectedPayloadsClient = {
       };
     };
     select: (columns: string) => {
-      eq: (column: "id", value: string) => {
+      eq: (
+        column: "id",
+        value: string,
+      ) => {
         single: () => QueryResult<DbPayloadRow>;
       };
     };

@@ -117,8 +117,6 @@ function buildServerHostedOutput(payloadId: string, bundle: EncryptedBundle, ser
 </html>`;
 }
 
-
-
 function Index() {
   const [source, setSource] = useState("");
   const [domain, setDomain] = useState("");
@@ -198,8 +196,12 @@ function Index() {
               <span className="absolute -inset-0.5 rounded-2xl bg-obf-accent/30 blur-md -z-10" />
             </div>
             <div>
-              <p className="text-[10px] tracking-[0.4em] text-obf-muted uppercase">MK · Obfuscator</p>
-              <p className="text-sm font-bold tracking-wide">HTML NOOB <span className="text-obf-accent">PRO</span></p>
+              <p className="text-[10px] tracking-[0.4em] text-obf-muted uppercase">
+                MK · Obfuscator
+              </p>
+              <p className="text-sm font-bold tracking-wide">
+                HTML NOOB <span className="text-obf-accent">PRO</span>
+              </p>
             </div>
           </div>
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-obf-border bg-obf-card/60 backdrop-blur">
@@ -234,8 +236,8 @@ function Index() {
             ))}
           </div>
           <p className="mt-6 text-obf-muted max-w-xl mx-auto text-sm sm:text-base leading-relaxed">
-            আপনার HTML / JS কোডকে বানান <span className="text-obf-fg font-semibold">অরক্ষনীয়</span> —
-            military-grade encryption, runtime isolation এবং tamper-proof credit lock একসাথে।
+            আপনার HTML / JS কোডকে বানান <span className="text-obf-fg font-semibold">অরক্ষনীয়</span>{" "}
+            — military-grade encryption, runtime isolation এবং tamper-proof credit lock একসাথে।
           </p>
         </section>
 
@@ -323,7 +325,6 @@ function Index() {
             />
           </section>
         )}
-
 
         {/* Features */}
         <section className="mt-12 grid sm:grid-cols-3 gap-4">
