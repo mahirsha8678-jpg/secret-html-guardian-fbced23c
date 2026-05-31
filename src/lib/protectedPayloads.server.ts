@@ -91,5 +91,5 @@ export async function getEncryptedPayload(id: string) {
     return null;
   }
 
-  return mapRow(data);
+  return mapRow(data as DbPayloadRow);
 }
