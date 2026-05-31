@@ -126,22 +126,23 @@ function Index() {
   const [copied, setCopied] = useState(false);
   const [generating, setGenerating] = useState(false);
   const outRef = useRef<HTMLTextAreaElement>(null);
+  const savePayload = useServerFn(saveProtectedPayload);
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     if (!source.trim()) {
       alert("অনুগ্রহ করে আগে HTML কোড দিন");
       return;
     }
     setGenerating(true);
-    setTimeout(() => {
-      try {
-        setOutput(generate(source, domain, window.location.origin));
-      } catch (err) {
-        alert("Encryption failed: " + (err as Error).message);
-      } finally {
-        setGenerating(false);
-      }
-    }, 60);
+    try {
+      const encrypted = encryptForServer(source, domain);
+      const saved = await savePayload({ data: encrypted });
+      setOutput(buildServerHostedOutput(saved.id, encrypted, window.location.origin));
+    } catch (err) {
+      alert("Encryption failed: " + (err as Error).message);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleCopy = async () => {
