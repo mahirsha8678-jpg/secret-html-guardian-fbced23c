@@ -25,6 +25,23 @@ type DbPayloadRow = {
   domain_lock: string | null;
 };
 
+type QueryResult<T> = Promise<{ data: T | null; error: { message?: string } | null }>;
+
+type ProtectedPayloadsClient = {
+  from: (table: "protected_payloads") => {
+    insert: (value: Record<string, string | number>) => {
+      select: (columns: string) => {
+        single: () => QueryResult<{ id: string }>;
+      };
+    };
+    select: (columns: string) => {
+      eq: (column: "id", value: string) => {
+        single: () => QueryResult<DbPayloadRow>;
+      };
+    };
+  };
+};
+
 function mapRow(row: DbPayloadRow): StoredPayloadRow {
   return {
     id: row.id,
@@ -39,7 +56,8 @@ function mapRow(row: DbPayloadRow): StoredPayloadRow {
 }
 
 export async function saveEncryptedPayload(input: StoredPayloadInput) {
-  const { data, error } = await (supabaseAdmin as any)
+  const db = supabaseAdmin as unknown as ProtectedPayloadsClient;
+  const { data, error } = await db
     .from("protected_payloads")
     .insert({
       payload: input.payload,
@@ -62,7 +80,8 @@ export async function saveEncryptedPayload(input: StoredPayloadInput) {
 }
 
 export async function getEncryptedPayload(id: string) {
-  const { data, error } = await (supabaseAdmin as any)
+  const db = supabaseAdmin as unknown as ProtectedPayloadsClient;
+  const { data, error } = await db
     .from("protected_payloads")
     .select("id,payload,k1,k2,credit_text,credit_hash,signature,domain_lock")
     .eq("id", id)
@@ -72,5 +91,5 @@ export async function getEncryptedPayload(id: string) {
     return null;
   }
 
-  return mapRow(data as DbPayloadRow);
+  return mapRow(data);
 }
