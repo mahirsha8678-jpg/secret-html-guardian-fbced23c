@@ -1,5 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef } from "react";
+
+import { saveProtectedPayload } from "@/lib/protectedPayloads.functions";
 
 export const Route = createFileRoute("/")({
   component: Index,
