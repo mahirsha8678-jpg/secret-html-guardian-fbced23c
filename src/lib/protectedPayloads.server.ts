@@ -71,7 +71,7 @@ export async function saveEncryptedPayload(input: StoredPayloadInput) {
     .select("id")
     .single();
 
-  if (error) {
+  if (error || !data) {
     console.error("Failed to save protected payload", error);
     throw new Error("SERVER_SAVE_FAILED");
   }
