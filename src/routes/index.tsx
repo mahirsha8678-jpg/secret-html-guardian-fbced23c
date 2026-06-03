@@ -116,6 +116,22 @@ function buildServerHostedOutput(payloadId: string, bundle: EncryptedBundle, ser
 </html>`;
 }
 
+function getPublicLoaderOrigin() {
+  const { protocol, hostname, origin } = window.location;
+  if (hostname.endsWith(".lovableproject.com")) {
+    const projectId = hostname.split(".")[0];
+    return `https://project--${projectId}-dev.lovable.app`;
+  }
+  const previewMatch = hostname.match(/^[^-]+-preview--(.+)\.lovable\.app$/);
+  if (previewMatch) {
+    return `https://project--${previewMatch[1]}-dev.lovable.app`;
+  }
+  if (protocol === "http:" && hostname === "localhost") {
+    return origin;
+  }
+  return origin;
+}
+
 function Index() {
   const [source, setSource] = useState("");
   const [domain, setDomain] = useState("");
@@ -134,7 +150,7 @@ function Index() {
     try {
       const encrypted = encryptForServer(source, domain);
       const saved = await savePayload({ data: encrypted });
-      setOutput(buildServerHostedOutput(saved.id, encrypted, window.location.origin));
+      setOutput(buildServerHostedOutput(saved.id, encrypted, getPublicLoaderOrigin()));
     } catch (err) {
       alert("Encryption failed: " + (err as Error).message);
     } finally {
