@@ -18,13 +18,15 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-// Returns the raw UTF-8 binary string (each char = 1 byte). NO base64 here,
-// because the loader will base64-decode the XORed payload once and then run
-// decodeURIComponent(escape(...)) on this binary string to get back the HTML.
-function utf8Encode(text: string) {
-  return encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
-    String.fromCharCode(parseInt(p1, 16)),
-  );
+const textEncoder = new TextEncoder();
+
+function bytesToBase64(bytes: Uint8Array) {
+  const CHUNK = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
 }
 
 function checksum(text: string) {
@@ -38,6 +40,7 @@ function checksum(text: string) {
 
 type EncryptedBundle = {
   payload: string;
+  algorithm: string;
   k1: number;
   k2: number;
   creditText: string;
@@ -48,6 +51,7 @@ type EncryptedBundle = {
 };
 
 function encryptForServer(rawHTML: string, domainLock: string): EncryptedBundle {
+  const ALGORITHM = "ARS250";
   const OWNER = "@MK_BRO_1";
   const SIGNATURE = "MKIRAJ9619_HTMLOBF_PROTECTED";
   const timestamp = new Date().toLocaleString();
@@ -68,24 +72,18 @@ function encryptForServer(rawHTML: string, domainLock: string): EncryptedBundle 
 
   const K1 = Math.floor(Math.random() * 200) + 30;
   const K2 = Math.floor(Math.random() * 200) + 30;
-  const l3 = utf8Encode(rawHTML);
-  const parts: string[] = [];
-  const CHUNK = 4096;
-  let buf = "";
+  const input = textEncoder.encode(rawHTML);
+  const encrypted = new Uint8Array(input.length);
 
-  for (let i = 0; i < l3.length; i++) {
+  for (let i = 0; i < input.length; i++) {
     const rk = (K1 ^ ((K2 + i) & 0xff)) & 0xff;
     const cm = (CM1 ^ ((CM2 + i) & 0xff)) & 0xff;
-    buf += String.fromCharCode(l3.charCodeAt(i) ^ rk ^ cm);
-    if (buf.length >= CHUNK) {
-      parts.push(buf);
-      buf = "";
-    }
+    encrypted[i] = input[i] ^ rk ^ cm;
   }
-  if (buf) parts.push(buf);
 
   return {
-    payload: btoa(parts.join("")),
+    payload: bytesToBase64(encrypted),
+    algorithm: ALGORITHM,
     k1: K1,
     k2: K2,
     creditText: CREDIT_TEXT,
