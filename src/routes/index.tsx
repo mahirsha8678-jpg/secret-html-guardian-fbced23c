@@ -18,11 +18,12 @@ export const Route = createFileRoute("/")({
   }),
 });
 
+// Returns the raw UTF-8 binary string (each char = 1 byte). NO base64 here,
+// because the loader will base64-decode the XORed payload once and then run
+// decodeURIComponent(escape(...)) on this binary string to get back the HTML.
 function utf8Encode(text: string) {
-  return btoa(
-    encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
-      String.fromCharCode(parseInt(p1, 16)),
-    ),
+  return encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
+    String.fromCharCode(parseInt(p1, 16)),
   );
 }
 
