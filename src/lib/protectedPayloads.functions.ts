@@ -1,8 +1,16 @@
 import { createServerFn } from "@tanstack/react-start";
 
-import { saveEncryptedPayload, type StoredPayloadInput } from "./protectedPayloads.server";
+const MAX_PAYLOAD_SIZE = 8_000_000;
 
-const MAX_PAYLOAD_SIZE = 2_000_000;
+type StoredPayloadInput = {
+  payload: string;
+  k1: number;
+  k2: number;
+  creditText: string;
+  creditHash: string;
+  signature: string;
+  domainLock: string;
+};
 
 function requiredString(value: unknown, name: string, max = MAX_PAYLOAD_SIZE) {
   if (typeof value !== "string" || value.length === 0 || value.length > max) {
@@ -37,4 +45,7 @@ function validatePayload(input: unknown): StoredPayloadInput {
 
 export const saveProtectedPayload = createServerFn({ method: "POST" })
   .inputValidator(validatePayload)
-  .handler(async ({ data }) => saveEncryptedPayload(data));
+  .handler(async ({ data }) => {
+    const { saveEncryptedPayload } = await import("./protectedPayloads.server");
+    return saveEncryptedPayload(data);
+  });

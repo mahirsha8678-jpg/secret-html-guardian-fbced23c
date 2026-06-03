@@ -18,13 +18,15 @@ export const Route = createFileRoute("/")({
   }),
 });
 
-// Returns the raw UTF-8 binary string (each char = 1 byte). NO base64 here,
-// because the loader will base64-decode the XORed payload once and then run
-// decodeURIComponent(escape(...)) on this binary string to get back the HTML.
-function utf8Encode(text: string) {
-  return encodeURIComponent(text).replace(/%([0-9A-F]{2})/g, (_m, p1) =>
-    String.fromCharCode(parseInt(p1, 16)),
-  );
+const textEncoder = new TextEncoder();
+
+function bytesToBase64(bytes: Uint8Array) {
+  const CHUNK = 0x8000;
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
 }
 
 function checksum(text: string) {
@@ -38,6 +40,7 @@ function checksum(text: string) {
 
 type EncryptedBundle = {
   payload: string;
+  algorithm: string;
   k1: number;
   k2: number;
   creditText: string;
@@ -48,6 +51,7 @@ type EncryptedBundle = {
 };
 
 function encryptForServer(rawHTML: string, domainLock: string): EncryptedBundle {
+  const ALGORITHM = "ARS250";
   const OWNER = "@MK_BRO_1";
   const SIGNATURE = "MKIRAJ9619_HTMLOBF_PROTECTED";
   const timestamp = new Date().toLocaleString();
@@ -68,24 +72,18 @@ function encryptForServer(rawHTML: string, domainLock: string): EncryptedBundle 
 
   const K1 = Math.floor(Math.random() * 200) + 30;
   const K2 = Math.floor(Math.random() * 200) + 30;
-  const l3 = utf8Encode(rawHTML);
-  const parts: string[] = [];
-  const CHUNK = 4096;
-  let buf = "";
+  const input = textEncoder.encode(rawHTML);
+  const encrypted = new Uint8Array(input.length);
 
-  for (let i = 0; i < l3.length; i++) {
+  for (let i = 0; i < input.length; i++) {
     const rk = (K1 ^ ((K2 + i) & 0xff)) & 0xff;
     const cm = (CM1 ^ ((CM2 + i) & 0xff)) & 0xff;
-    buf += String.fromCharCode(l3.charCodeAt(i) ^ rk ^ cm);
-    if (buf.length >= CHUNK) {
-      parts.push(buf);
-      buf = "";
-    }
+    encrypted[i] = input[i] ^ rk ^ cm;
   }
-  if (buf) parts.push(buf);
 
   return {
-    payload: btoa(parts.join("")),
+    payload: bytesToBase64(encrypted),
+    algorithm: ALGORITHM,
     k1: K1,
     k2: K2,
     creditText: CREDIT_TEXT,
@@ -118,6 +116,22 @@ function buildServerHostedOutput(payloadId: string, bundle: EncryptedBundle, ser
 </html>`;
 }
 
+function getPublicLoaderOrigin() {
+  const { protocol, hostname, origin } = window.location;
+  if (hostname.endsWith(".lovableproject.com")) {
+    const projectId = hostname.split(".")[0];
+    return `https://project--${projectId}-dev.lovable.app`;
+  }
+  const previewMatch = hostname.match(/^[^-]+-preview--(.+)\.lovable\.app$/);
+  if (previewMatch) {
+    return `https://project--${previewMatch[1]}-dev.lovable.app`;
+  }
+  if (protocol === "http:" && hostname === "localhost") {
+    return origin;
+  }
+  return origin;
+}
+
 function Index() {
   const [source, setSource] = useState("");
   const [domain, setDomain] = useState("");
@@ -136,7 +150,7 @@ function Index() {
     try {
       const encrypted = encryptForServer(source, domain);
       const saved = await savePayload({ data: encrypted });
-      setOutput(buildServerHostedOutput(saved.id, encrypted, window.location.origin));
+      setOutput(buildServerHostedOutput(saved.id, encrypted, getPublicLoaderOrigin()));
     } catch (err) {
       alert("Encryption failed: " + (err as Error).message);
     } finally {
@@ -227,7 +241,7 @@ function Index() {
             <span className="italic font-light">PRO</span>
           </h1>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            {["Chinese Cipher", "Triple Base64", "Iframe Sandbox", "Domain Lock"].map((t) => (
+            {["ARS250 Cipher", "Single-Pass UTF-8", "Iframe Sandbox", "Domain Lock"].map((t) => (
               <span
                 key={t}
                 className="px-3 py-1 rounded-full text-[10px] uppercase tracking-widest text-obf-muted border border-obf-border bg-obf-card/40 backdrop-blur"
@@ -278,7 +292,7 @@ function Index() {
               className="group relative w-full py-4 rounded-xl font-semibold tracking-wide text-obf-bg bg-obf-accent hover:opacity-95 active:scale-[0.99] transition shadow-obf-glow disabled:opacity-60"
             >
               <span className="relative z-10">
-                {generating ? "🔒 ENCRYPTING…" : "⚡ GENERATE PROTECTED HTML"}
+                {generating ? "🔒 ARS250 ENCRYPTING…" : "⚡ GENERATE ARS250 HTML"}
               </span>
             </button>
           </div>
@@ -330,7 +344,7 @@ function Index() {
         {/* Features */}
         <section className="mt-12 grid sm:grid-cols-3 gap-4">
           {[
-            { i: "🧬", t: "Chinese Cipher", d: "XOR + CJK range mapping for opaque payloads." },
+            { i: "🧬", t: "ARS250 Cipher", d: "Single-pass Chinese-style encryption with stable UTF-8 restore." },
             { i: "🛡️", t: "Runtime Sandbox", d: "Iframe-isolated execution via blob URLs." },
             {
               i: "🔒",
