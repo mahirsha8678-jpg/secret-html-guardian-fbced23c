@@ -1,7 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { getEncryptedPayload } from "@/lib/protectedPayloads.server";
-
 // GET /api/public/loader.js?id=<payload-id>
 // Returns runtime JS that pulls the encrypted payload from Lovable Cloud and renders it in a sandboxed iframe.
 export const Route = createFileRoute("/api/public/loader.js")({
@@ -28,6 +26,7 @@ export const Route = createFileRoute("/api/public/loader.js")({
           });
         }
 
+        const { getEncryptedPayload } = await import("@/lib/protectedPayloads.server");
         const row = await getEncryptedPayload(id);
         if (!row) {
           return new Response("throw new Error('PAYLOAD_NOT_FOUND');", {
@@ -45,7 +44,7 @@ export const Route = createFileRoute("/api/public/loader.js")({
           ? `var __al=${JSON.stringify(dom.toLowerCase())};if((location.hostname||'').toLowerCase()!==__al){document.documentElement.innerHTML='<div style=\\'font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#0a0a0a;color:#ff4444;text-align:center;padding:24px\\'><div><h1 style=\\'font-size:48px;margin:0 0 12px\\'>&#128274; DOMAIN LOCK</h1><p style=\\'opacity:.7\\'>Unauthorized domain detected</p></div></div>';throw new Error('DOMAIN_BLOCKED');}`
           : "";
 
-        const js = `/*! MK_BRO_1 · server-loader · do not modify */
+        const js = `/*! MK_BRO_1 · ARS250 server-loader · do not modify */
 (function(){
   try{
     ${domainGuard}
@@ -57,15 +56,16 @@ export const Route = createFileRoute("/api/public/loader.js")({
     var __ck=__mk_h(__ct+'|'+__cs+'|'+__sg),__a=0,__b=0;
     for(var __i=0;__i<__ck.length;__i++){__a=(__a+__ck.charCodeAt(__i)*31)&0xff;__b=(__b^((__ck.charCodeAt(__i)<<(__i%5))&0xff))&0xff;}
     var CM1=__a||0x5a,CM2=__b||0xa5;
-    var ENC=${JSON.stringify(p)},K1=${k1},K2=${k2};
-    var raw=atob(ENC),L=raw.length,out=new Array(L);
+    var ENC=${JSON.stringify(p)},ALG='ARS250',K1=${k1},K2=${k2};
+    function __b64bytes(s){var bin=atob(s),len=bin.length,bytes=new Uint8Array(len);for(var x=0;x<len;x+=32768){var end=Math.min(x+32768,len);for(var y=x;y<end;y++)bytes[y]=bin.charCodeAt(y)&255;}return bytes;}
+    var raw=__b64bytes(ENC),L=raw.length,out=new Uint8Array(L);
     for(var i=0;i<L;i++){
       var rk=(K1^((K2+i)&0xff))&0xff;
       var cm=(CM1^((CM2+i)&0xff))&0xff;
-      out[i]=String.fromCharCode(raw.charCodeAt(i)^rk^cm);
+      out[i]=raw[i]^rk^cm;
     }
-    function u8d(s){try{return decodeURIComponent(escape(s));}catch(e){return s;}}
-    var html=u8d(out.join(''));
+    function __u8(bytes){try{return new TextDecoder('utf-8',{fatal:false}).decode(bytes);}catch(e){var s='',c=32768;for(var z=0;z<bytes.length;z+=c)s+=String.fromCharCode.apply(null,bytes.subarray(z,z+c));try{return decodeURIComponent(escape(s));}catch(_e){return s;}}}
+    var html=__u8(out);
     // Anti-inspect
     try{document.addEventListener('contextmenu',function(e){e.preventDefault();});
     document.addEventListener('keydown',function(e){
