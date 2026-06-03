@@ -241,7 +241,7 @@ function Index() {
             <span className="italic font-light">PRO</span>
           </h1>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
-            {["Chinese Cipher", "Triple Base64", "Iframe Sandbox", "Domain Lock"].map((t) => (
+            {["ARS250 Cipher", "Single-Pass UTF-8", "Iframe Sandbox", "Domain Lock"].map((t) => (
               <span
                 key={t}
                 className="px-3 py-1 rounded-full text-[10px] uppercase tracking-widest text-obf-muted border border-obf-border bg-obf-card/40 backdrop-blur"
@@ -292,7 +292,7 @@ function Index() {
               className="group relative w-full py-4 rounded-xl font-semibold tracking-wide text-obf-bg bg-obf-accent hover:opacity-95 active:scale-[0.99] transition shadow-obf-glow disabled:opacity-60"
             >
               <span className="relative z-10">
-                {generating ? "🔒 ENCRYPTING…" : "⚡ GENERATE PROTECTED HTML"}
+                {generating ? "🔒 ARS250 ENCRYPTING…" : "⚡ GENERATE ARS250 HTML"}
               </span>
             </button>
           </div>
@@ -344,7 +344,7 @@ function Index() {
         {/* Features */}
         <section className="mt-12 grid sm:grid-cols-3 gap-4">
           {[
-            { i: "🧬", t: "Chinese Cipher", d: "XOR + CJK range mapping for opaque payloads." },
+            { i: "🧬", t: "ARS250 Cipher", d: "Single-pass Chinese-style encryption with stable UTF-8 restore." },
             { i: "🛡️", t: "Runtime Sandbox", d: "Iframe-isolated execution via blob URLs." },
             {
               i: "🔒",
