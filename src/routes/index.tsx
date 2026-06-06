@@ -118,13 +118,22 @@ function buildServerHostedOutput(payloadId: string, bundle: EncryptedBundle, ser
 
 function getPublicLoaderOrigin() {
   const { protocol, hostname, origin } = window.location;
+  // Always prefer the STABLE PRODUCTION URL (no -dev) — published deployments
+  // serve /api/public/* without any auth/cookie gate. The -dev preview origin
+  // can sit behind a Lovable cookie gate which breaks downloaded .html files
+  // ("Cookies are not enabled").
   if (hostname.endsWith(".lovableproject.com")) {
     const projectId = hostname.split(".")[0];
-    return `https://project--${projectId}-dev.lovable.app`;
+    return `https://project--${projectId}.lovable.app`;
   }
   const previewMatch = hostname.match(/^[^-]+-preview--(.+)\.lovable\.app$/);
   if (previewMatch) {
-    return `https://project--${previewMatch[1]}-dev.lovable.app`;
+    return `https://project--${previewMatch[1]}.lovable.app`;
+  }
+  // Already on a *.lovable.app host — use it directly only if it isn't a -dev one.
+  if (hostname.endsWith(".lovable.app")) {
+    const stable = hostname.replace(/-dev\.lovable\.app$/, ".lovable.app");
+    return `${protocol}//${stable}`;
   }
   if (protocol === "http:" && hostname === "localhost") {
     return origin;
