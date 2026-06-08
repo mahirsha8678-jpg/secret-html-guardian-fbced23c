@@ -208,11 +208,11 @@ function Index() {
 
   const handleDownload = () => {
     if (!output) return;
-    const blob = new Blob([output], { type: "text/html" });
+    const blob = new Blob([output], { type: "application/x-httpd-php" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "protected.html";
+    a.download = "protected.php";
     a.click();
     URL.revokeObjectURL(url);
   };
