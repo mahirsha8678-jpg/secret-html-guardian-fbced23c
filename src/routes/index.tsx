@@ -97,20 +97,50 @@ function encryptForServer(rawHTML: string, domainLock: string): EncryptedBundle 
 function buildServerHostedOutput(payloadId: string, bundle: EncryptedBundle, serverOrigin: string) {
   const OWNER = "@MK_BRO_1";
   const loaderUrl = `${serverOrigin}/api/public/loader.js?id=${encodeURIComponent(payloadId)}`;
+  // Encode the payload id so it is not human-readable inside the .php file.
+  const encodedId = btoa(`MK::${payloadId}::${bundle.creditHash}`);
+  const encodedLoader = btoa(loaderUrl);
 
-  return `${bundle.headerComment}<!DOCTYPE html>
+  // PHP-wrapped output. When served via any PHP host (cPanel, Hostinger,
+  // 000webhost, XAMPP, etc.) the <?php ... ?> block runs server-side and
+  // emits the HTML + loader script. The payload id and loader URL are
+  // base64-encoded so they are not visible in plain text.
+  return `<?php
+/*
+ ====================================================
+  PROTECTED BY ULTIMATE HTML OBFUSCATOR (PHP EDITION)
+  Owner: ${OWNER}
+  Signature: ${bundle.signature}
+  Algorithm: ${bundle.algorithm}
+  Generated: ${new Date().toLocaleString()}
+ ====================================================
+*/
+@error_reporting(0);
+@ini_set('display_errors', 0);
+$__mk_id    = base64_decode('${encodedId}');
+$__mk_ldr   = base64_decode('${encodedLoader}');
+$__mk_parts = explode('::', $__mk_id);
+$__mk_pid   = isset($__mk_parts[1]) ? $__mk_parts[1] : '';
+$__mk_credit = '${bundle.creditText}';
+$__mk_sign   = '${bundle.creditHash}';
+$__mk_sig    = '${bundle.signature}';
+header('Content-Type: text/html; charset=utf-8');
+header('X-Protected-By: ${OWNER}');
+echo '<!DOCTYPE html>'.PHP_EOL;
+?>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<meta name="mk-protected-credit" content="${bundle.creditText}" data-sign="${bundle.creditHash}">
-<meta name="mk-signature" content="${bundle.signature}">
+<meta name="mk-protected-credit" content="<?php echo htmlspecialchars($__mk_credit, ENT_QUOTES); ?>" data-sign="<?php echo htmlspecialchars($__mk_sign, ENT_QUOTES); ?>">
+<meta name="mk-signature" content="<?php echo htmlspecialchars($__mk_sig, ENT_QUOTES); ?>">
 <title>Protected</title>
 <style>html,body{margin:0;padding:0;width:100%;height:100%;overflow:hidden;background:#fff;}iframe{width:100%;height:100%;border:none;display:block;}</style>
 </head>
 <body>
-<!-- PROTECTED by ${OWNER} · Server-hosted encrypted payload · ID: ${payloadId} -->
-<script src="${loaderUrl}" defer></script>
+<!-- PROTECTED by ${OWNER} · PHP server-hosted encrypted payload -->
+<script>window.__MK_PID=<?php echo json_encode($__mk_pid); ?>;</script>
+<script src="<?php echo htmlspecialchars($__mk_ldr, ENT_QUOTES); ?>?id=<?php echo urlencode($__mk_pid); ?>" defer></script>
 <noscript>This protected file requires JavaScript.</noscript>
 </body>
 </html>`;
@@ -178,11 +208,11 @@ function Index() {
 
   const handleDownload = () => {
     if (!output) return;
-    const blob = new Blob([output], { type: "text/html" });
+    const blob = new Blob([output], { type: "application/x-httpd-php" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "protected.html";
+    a.download = "protected.php";
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -287,7 +317,7 @@ function Index() {
               className="group relative w-full py-4 rounded-xl font-semibold tracking-wide text-obf-bg bg-obf-accent hover:opacity-95 active:scale-[0.99] transition shadow-obf-glow disabled:opacity-60"
             >
               <span className="relative z-10">
-                {generating ? "🔒 ARS250 ENCRYPTING…" : "⚡ GENERATE ARS250 HTML"}
+                {generating ? "🔒 ARS250 ENCRYPTING…" : "⚡ GENERATE PROTECTED .PHP"}
               </span>
             </button>
           </div>
@@ -317,7 +347,7 @@ function Index() {
                 onClick={handleDownload}
                 className="flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold bg-obf-accent text-obf-bg hover:opacity-90 active:scale-[0.98] transition shadow-obf-glow"
               >
-                ⬇ DOWNLOAD .HTML
+                ⬇ DOWNLOAD .PHP
               </button>
             </div>
 
