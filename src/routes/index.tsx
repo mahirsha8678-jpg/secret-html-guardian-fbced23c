@@ -96,7 +96,7 @@ function encryptForServer(rawHTML: string, domainLock: string): EncryptedBundle 
 
 function buildServerHostedOutput(payloadId: string, bundle: EncryptedBundle, serverOrigin: string) {
   const OWNER = "@MK_BRO_1";
-  const loaderUrl = `${serverOrigin}/api/public/loader.js?id=${encodeURIComponent(payloadId)}`;
+  const loaderUrl = `${serverOrigin}/api/public/loader.js`;
   // Encode the payload id so it is not human-readable inside the .php file.
   const encodedId = btoa(`MK::${payloadId}::${bundle.creditHash}`);
   const encodedLoader = btoa(loaderUrl);
@@ -124,10 +124,11 @@ $__mk_pid   = isset($__mk_parts[1]) ? $__mk_parts[1] : '';
 $__mk_credit = '${bundle.creditText}';
 $__mk_sign   = '${bundle.creditHash}';
 $__mk_sig    = '${bundle.signature}';
+$__mk_src    = $__mk_ldr . '?id=' . rawurlencode($__mk_pid);
 header('Content-Type: text/html; charset=utf-8');
 header('X-Protected-By: ${OWNER}');
-echo '<!DOCTYPE html>'.PHP_EOL;
 ?>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -139,8 +140,9 @@ echo '<!DOCTYPE html>'.PHP_EOL;
 </head>
 <body>
 <!-- PROTECTED by ${OWNER} · PHP server-hosted encrypted payload -->
+<script>(function(){try{function b(){document.documentElement.innerHTML='<div style="font-family:system-ui;display:flex;align-items:center;justify-content:center;height:100vh;background:#08080b;color:#ff4d4d;text-align:center"><div><div style="font-size:54px">&#128683;</div><h1>BLOCKED</h1></div></div>';try{window.stop&&window.stop()}catch(e){}}document.addEventListener('contextmenu',function(e){e.preventDefault();b()});document.addEventListener('keydown',function(e){if(e.keyCode===123||(e.ctrlKey&&e.keyCode===85)||(e.ctrlKey&&e.shiftKey&&(e.keyCode===73||e.keyCode===74||e.keyCode===67))){e.preventDefault();b()}})}catch(e){}})();</script>
 <script>window.__MK_PID=<?php echo json_encode($__mk_pid); ?>;</script>
-<script src="<?php echo htmlspecialchars($__mk_ldr, ENT_QUOTES); ?>?id=<?php echo urlencode($__mk_pid); ?>" defer></script>
+<script src="<?php echo htmlspecialchars($__mk_src, ENT_QUOTES); ?>" defer></script>
 <noscript>This protected file requires JavaScript.</noscript>
 </body>
 </html>`;
