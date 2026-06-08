@@ -124,7 +124,7 @@ $__mk_pid   = isset($__mk_parts[1]) ? $__mk_parts[1] : '';
 $__mk_credit = '${bundle.creditText}';
 $__mk_sign   = '${bundle.creditHash}';
 $__mk_sig    = '${bundle.signature}';
-$__mk_src    = $__mk_ldr . '?id=' . rawurlencode($__mk_pid);
+$__mk_src    = $__mk_ldr . '?id=' . rawurlencode($__mk_pid) . '&wrap=php';
 header('Content-Type: text/html; charset=utf-8');
 header('X-Protected-By: ${OWNER}');
 ?>
