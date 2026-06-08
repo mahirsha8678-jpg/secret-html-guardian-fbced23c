@@ -317,7 +317,7 @@ function Index() {
               className="group relative w-full py-4 rounded-xl font-semibold tracking-wide text-obf-bg bg-obf-accent hover:opacity-95 active:scale-[0.99] transition shadow-obf-glow disabled:opacity-60"
             >
               <span className="relative z-10">
-                {generating ? "🔒 ARS250 ENCRYPTING…" : "⚡ GENERATE ARS250 HTML"}
+                {generating ? "🔒 ARS250 ENCRYPTING…" : "⚡ GENERATE PROTECTED .PHP"}
               </span>
             </button>
           </div>
