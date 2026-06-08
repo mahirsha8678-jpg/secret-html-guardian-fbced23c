@@ -19,6 +19,28 @@ export const Route = createFileRoute("/api/public/loader.js")({
         const url = new URL(request.url);
         const id = url.searchParams.get("id") || "";
 
+        // Block direct browser visits — only <script src> loads (Sec-Fetch-Dest: script)
+        // should receive the runtime. Anything else gets a branded "locked" HTML page.
+        const dest = request.headers.get("sec-fetch-dest") || "";
+        const mode = request.headers.get("sec-fetch-mode") || "";
+        const accept = request.headers.get("accept") || "";
+        const isScriptLoad =
+          dest === "script" ||
+          mode === "no-cors" ||
+          (!dest && !accept.includes("text/html"));
+
+        if (!isScriptLoad) {
+          const lockedHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Protected · @MK_BRO_1</title><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;height:100%;background:#08080b;color:#fff;font-family:system-ui,-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;text-align:center}.b{max-width:480px;padding:32px}.i{font-size:72px;margin-bottom:12px}.t{font-size:28px;font-weight:800;letter-spacing:.02em;margin:0 0 8px;background:linear-gradient(135deg,#ff4d6d,#ffb86b);-webkit-background-clip:text;background-clip:text;color:transparent}.s{color:#8f8f98;font-size:13px;line-height:1.6;margin:0}.k{display:inline-block;margin-top:18px;padding:6px 12px;border:1px solid #2a2a33;border-radius:999px;font-size:11px;letter-spacing:.3em;color:#9aa;text-transform:uppercase}</style></head><body><div class="b"><div class="i">&#128274;</div><h1 class="t">PROTECTED RESOURCE</h1><p class="s">This is an encrypted runtime endpoint.<br>Direct access is not permitted.<br><br>The protected payload only loads inside its authorized <code>.php</code> wrapper.</p><div class="k">@MK_BRO_1 &middot; ARS250</div></div></body></html>`;
+          return new Response(lockedHtml, {
+            status: 200,
+            headers: {
+              "Content-Type": "text/html; charset=utf-8",
+              "Cache-Control": "no-store",
+              "X-MK-Protected": "@MK_BRO_1",
+            },
+          });
+        }
+
         if (!/^[0-9a-f-]{36}$/i.test(id)) {
           return new Response("throw new Error('INVALID_PAYLOAD_ID');", {
             status: 400,
