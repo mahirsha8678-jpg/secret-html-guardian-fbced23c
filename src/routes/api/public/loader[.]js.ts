@@ -27,7 +27,6 @@ export const Route = createFileRoute("/api/public/loader.js")({
         const isScriptLoad =
           dest === "script" ||
           mode === "no-cors" ||
-          url.searchParams.get("wrap") === "php" ||
           (!dest && !accept.includes("text/html"));
 
         if (!isScriptLoad) {
